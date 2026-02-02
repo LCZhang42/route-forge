@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+notebooks/
+
+# Model files & checkpoints (exclude all trained models)
+*.pth
+*.pt
+*.h5
+*.pkl
+*.ckpt
+checkpoints/
+saved_models/
+
+# Training artifacts
+runs/
+training_plots/
+test_visualizations/
+validated_viz/
+validated_viz_constrained/
+
+# Generated outputs
+generated_paths*.json
+test_paths*.json
+
+# Data files (keep structure, ignore large files)
+*.xlsx
+data/*.csv
+data/*.json
+data/*.jsonl
+!data/.gitkeep
+!data/grade_constraints.json
+
+# Environment
+.env
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.cache/
+package-lock.json
+yarn.lock
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Docs (PDFs can be large)
+*.pdf
+docs/gradio_screenshot.png
