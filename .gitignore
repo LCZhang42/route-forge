@@ -34,7 +34,9 @@ notebooks/
 *.h5
 *.pkl
 *.ckpt
-checkpoints/
+checkpoints/climb_path_cpu/epoch_10.pt
+checkpoints/climb_path_cpu/latest.pt
+
 saved_models/
 
 # Training artifacts
