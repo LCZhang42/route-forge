@@ -47,7 +47,7 @@ You should see `(venv)` in your terminal prompt.
 pip install -r requirements.txt
 ```
 
-#### Option B: Install CPU-Only PyTorch (Smaller Download)
+#### Option B: Install Backend Only
 If you only have CPU (no GPU):
 ```bash
 # Install CPU-only PyTorch first (smaller, faster)
@@ -58,33 +58,21 @@ pip install -r requirements.txt
 ```
 
 #### Option C: Install Minimal Dependencies
-If you only want to train the model (no API):
+If you only want to train the model (no web interface):
 ```bash
-pip install torch pandas numpy scikit-learn tensorboard tqdm transformers
+pip install torch pandas numpy tensorboard tqdm transformers datasets
 ```
 
 ### 4. Verify Installation
 
-Run the test script:
+Test the installation:
 ```bash
-python test_model.py
+python -c "import torch; import transformers; import pandas; print('✓ All packages installed successfully')"
 ```
 
 You should see:
 ```
-======================================================================
-TESTING AUTOREGRESSIVE CLIMB PATH MODEL
-======================================================================
-
-1. Testing imports...
-   ✓ All imports successful
-
-2. Testing tokenizer...
-   ✓ Tokenizer initialized (vocab_size=45)
-
-...
-
-ALL TESTS PASSED! ✓
+✓ All packages installed successfully
 ```
 
 ## Installation Time Estimates
@@ -141,12 +129,13 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 | Package | Purpose | Size |
 |---------|---------|------|
 | **torch** | Deep learning framework | ~2 GB |
-| **transformers** | Transformer utilities | ~500 MB |
+| **transformers** | HuggingFace Transformers (DistilGPT-2) | ~500 MB |
+| **datasets** | Data loading utilities | ~50 MB |
 | **pandas** | Data manipulation | ~50 MB |
 | **numpy** | Numerical computing | ~20 MB |
 | **tensorboard** | Training visualization | ~100 MB |
 | **tqdm** | Progress bars | ~1 MB |
-| **scikit-learn** | Train/val/test splits | ~30 MB |
+| **gradio** | Web interface (optional) | ~50 MB |
 | **matplotlib/seaborn** | Plotting (optional) | ~50 MB |
 | **fastapi/uvicorn** | API (optional) | ~20 MB |
 

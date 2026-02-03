@@ -1,16 +1,15 @@
 # Climb Path Generator 🧗‍♂️
 
-AI-powered MoonBoard climbing route generation system using an autoregressive transformer model. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with built-in reachability constraints and quality filtering.
+AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
 
 ## 🎯 Features
 
-- ✅ **Autoregressive Transformer Model** - LegoACE-inspired architecture for sequential hold generation
-- ✅ **Grade-Conditioned Generation** - Generate routes for specific difficulty levels (6B to 8B+)
-- ✅ **Reachability Constraints** - Physics-based distance checks ensure climbable routes
-- ✅ **Quality Filtering** - Train on high-quality, benchmark routes for better outputs
+- ✅ **Fine-tuned DistilGPT-2** - Lightweight pre-trained language model (82M parameters)
+- ✅ **Endpoint Conditioning** - Specify grade, start hold, and end hold to generate intermediate holds
+- ✅ **Grade-Conditioned Generation** - Generate routes for specific difficulty levels (6B+ to 7C+)
+- ✅ **Quality Filtering** - Train on high-quality, balanced routes for better outputs
 - ✅ **Interactive Web Interface** - Gradio-based UI for easy route generation and visualization
-- ✅ **Vertical Progression Loss** - Ensures routes progress upward naturally
-- ✅ **CPU & GPU Training** - Optimized for both CPU-only and GPU-accelerated training
+- ✅ **CPU & GPU Training** - Works on CPU (2-3 hours) or GPU (20 minutes)
 
 ## 🖼️ Gradio Web Interface
 
@@ -39,11 +38,11 @@ climb-path/
 ## 📊 Dataset
 
 **MoonBoard 2016** climbing problems dataset:
-- **11,000+** climbing routes across all difficulty levels
-- **Grades**: 6B, 6B+, 6C, 6C+, 7A, 7A+, 7B, 7B+, 7C, 7C+, 8A, 8A+, 8B, 8B+
+- **6,610** quality-filtered training routes (balanced across grades)
+- **Grades**: 6B+, 6C, 6C+, 7A, 7A+, 7B, 7B+, 7C, 7C+ (rare grades removed)
 - **Hold positions**: (x, y) coordinates on 11×18 grid
-- **Quality metrics**: Repeats, benchmark status, user ratings
-- **Splits**: Train (80%), Validation (10%), Test (10%)
+- **Quality metrics**: Filtered by repeats and quality scores
+- **Format**: Grade + Start Hold + End Hold → Intermediate Holds
 
 ## 🚀 Quick Start
 
@@ -61,22 +60,17 @@ See [`INSTALL.md`](INSTALL.md) for detailed installation instructions.
 
 ### 2. Train the Model
 
-#### CPU Training (Recommended for most users)
 ```bash
 # Windows
-train_cpu.bat
+train_distilgpt2.bat
 
 # Linux/Mac
-bash train_cpu.sh
+python backend/training/finetune_huggingface.py
 ```
 
-#### GPU Training
-```bash
-cd backend
-python training/train_autoregressive.py --device cuda --batch_size 128
-```
+**Training time**: ~2-3 hours on CPU, ~20 minutes on GPU
 
-See [`CPU_TRAINING_GUIDE.md`](CPU_TRAINING_GUIDE.md) or [`QUICKSTART.md`](QUICKSTART.md) for detailed training instructions.
+See [`QUICKSTART.md`](QUICKSTART.md) for detailed training instructions.
 
 ### 3. Generate Routes
 
@@ -93,41 +87,40 @@ Then open http://localhost:7860 in your browser.
 
 #### Using Command Line
 ```bash
-cd backend
-python training/generate_paths.py --grade 7A --num_samples 5 --visualize
+# Windows
+generate_paths.bat
+
+# Linux/Mac
+python backend/training/generate_with_gpt2.py --grade 7A --start_hold 0,4 --end_hold 8,17 --num_samples 5
 ```
 
 #### Using Python API
 ```python
-from backend.models.tokenizer import ClimbPathTokenizer
-from backend.models.climb_transformer import ClimbPathTransformerWithGeneration
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import torch
 
 # Load model
-tokenizer = ClimbPathTokenizer()
-model = ClimbPathTransformerWithGeneration(vocab_size=45)
-checkpoint = torch.load('checkpoints/climb_path_cpu/best.pt')
-model.load_state_dict(checkpoint['model_state_dict'])
+model = GPT2LMHeadModel.from_pretrained('checkpoints/distilgpt2_climb/final')
+tokenizer = GPT2Tokenizer.from_pretrained('checkpoints/distilgpt2_climb/final')
 model.eval()
 
 # Generate route
-grade_token = tokenizer.encode_grade('7A')
-tokens = model.generate(grade_token=grade_token, tokenizer=tokenizer)
-grade, holds = tokenizer.decode(tokens.cpu().numpy())
-print(f"Generated {len(holds)} holds for grade {grade}")
+prompt = "GRADE: 7A | START: (0,4) | END: (8,17) | MID:"
+input_ids = tokenizer.encode(prompt, return_tensors='pt')
+output = model.generate(input_ids, max_length=256, temperature=0.8)
+generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+print(generated_text)
 ```
 
 ### 4. Visualize Results
 
 ```bash
 # Visualize training progress
-tensorboard --logdir runs/climb_path_cpu
+tensorboard --logdir checkpoints/distilgpt2_climb/logs
 
 # Visualize generated paths
 python visualize_path.py
 ```
-
-See [`VISUALIZATION_GUIDE.md`](VISUALIZATION_GUIDE.md) for more visualization options.
 
 ## 📚 Documentation
 
@@ -135,38 +128,36 @@ See [`VISUALIZATION_GUIDE.md`](VISUALIZATION_GUIDE.md) for more visualization op
 |-------|-------------|
 | [`INSTALL.md`](INSTALL.md) | Installation and setup instructions |
 | [`QUICKSTART.md`](QUICKSTART.md) | Quick start guide for training and generation |
-| [`CPU_TRAINING_GUIDE.md`](CPU_TRAINING_GUIDE.md) | CPU-optimized training guide |
 | [`WINDOWS_SETUP.md`](WINDOWS_SETUP.md) | Windows-specific setup instructions |
+| [`WORKFLOW.md`](WORKFLOW.md) | Complete workflow from data to deployment |
+| [`ENDPOINT_CONDITIONING.md`](ENDPOINT_CONDITIONING.md) | Endpoint conditioning explanation |
+| [`GRADE_BALANCE_GUIDE.md`](GRADE_BALANCE_GUIDE.md) | Grade balance and filtering guide |
 | [`QUALITY_FILTERING_GUIDE.md`](QUALITY_FILTERING_GUIDE.md) | Training with quality-filtered data |
-| [`REACHABILITY_LOSS_GUIDE.md`](REACHABILITY_LOSS_GUIDE.md) | Reachability constraint implementation |
-| [`VERTICAL_PROGRESSION_TRAINING.md`](VERTICAL_PROGRESSION_TRAINING.md) | Vertical progression loss guide |
-| [`VISUALIZATION_GUIDE.md`](VISUALIZATION_GUIDE.md) | Visualization and evaluation tools |
-| [`VALID_HOLDS_GUIDE.md`](VALID_HOLDS_GUIDE.md) | Valid hold constraints and filtering |
 
 ## 🏗️ Model Architecture
 
-**Type**: Autoregressive Transformer (Decoder-only)
+**Type**: Fine-tuned DistilGPT-2 (Causal Language Model)
 
 **Specifications**:
-- Vocabulary: 45 tokens (BOS, 14 grades, 11 x-coords, 17 y-coords, EOS)
-- Default size: ~2.5M parameters (d_model=256, 6 layers)
-- Sequence format: `[BOS, grade, x1, y1, x2, y2, ..., EOS]`
-- Max sequence length: 62 tokens (30 holds × 2 + 2)
+- Base model: DistilGPT-2 (82M parameters, 6 layers, 768 hidden size)
+- Vocabulary: ~50k tokens (GPT-2 tokenizer)
+- Input format: `GRADE: 7A | START: (0,4) | END: (8,17) | MID:`
+- Output format: `GRADE: 7A | START: (0,4) | END: (8,17) | MID: (1,7) (3,11) (5,13)`
+- Max sequence length: 256 tokens
 
-**Key Components**:
-1. **Tokenizer** - Encodes grades and coordinates into tokens
-2. **Transformer** - Learns sequential patterns in climbing routes
-3. **Logits Processors** - Enforces structural validity during generation
-4. **Reachability Loss** - Penalizes unreachable hold distances
-5. **Vertical Progression Loss** - Encourages upward movement
-
-See [`docs/AUTOREGRESSIVE_MODEL.md`](docs/AUTOREGRESSIVE_MODEL.md) for architecture details.
+**Key Features**:
+1. **Endpoint Conditioning** - Specify start and end holds, model generates intermediate
+2. **Pre-trained Knowledge** - Leverages GPT-2's sequence understanding
+3. **Fast Training** - 2-3 hours on CPU, 20 minutes on GPU
+4. **Lightweight** - 82M parameters (33% smaller than GPT-2)
+5. **Text-based** - Natural language format for climbing paths
 
 ## 🛠️ Tech Stack
 
 **Machine Learning**:
 - PyTorch 2.1+ (deep learning framework)
-- Transformers (model utilities)
+- HuggingFace Transformers (DistilGPT-2)
+- Datasets (data loading)
 - TensorBoard (training visualization)
 
 **Data Processing**:
@@ -183,24 +174,24 @@ See [`docs/AUTOREGRESSIVE_MODEL.md`](docs/AUTOREGRESSIVE_MODEL.md) for architect
 
 ## 🎓 Training Tips
 
-1. **Start with CPU training** - Works well for initial experiments
-2. **Use quality filtering** - Train on benchmark/high-repeat routes for better quality
-3. **Monitor validation loss** - Stop when validation loss plateaus
-4. **Adjust temperature** - Lower (0.5-0.7) for realistic, higher (1.2-1.5) for creative routes
-5. **Enable reachability loss** - Improves physical plausibility of generated routes
+1. **Use quality-filtered data** - Train on balanced, high-quality routes
+2. **Monitor validation loss** - Should be < 2.0 after 10 epochs
+3. **Adjust temperature** - Lower (0.6-0.8) for realistic, higher (1.0-1.2) for creative routes
+4. **Specify endpoints** - Control start/end positions for better results
+5. **Check grade balance** - Use `analyze_grade_distribution.py` to verify data balance
 
 ## 📈 Results & Evaluation
 
 Evaluate model performance:
 ```bash
-# Evaluate on test set
-python backend/training/evaluate_model.py
+# Generate sample paths
+generate_paths.bat
 
-# Check for memorization
-python backend/training/check_memorization.py
+# Visualize paths
+python visualize_path.py
 
-# Visualize generated vs real routes
-python validate_and_visualize.py
+# Check grade distribution
+python analyze_grade_distribution.py
 ```
 
 ## 🤝 Contributing
@@ -218,8 +209,8 @@ MIT
 ## 🙏 Acknowledgments
 
 - **MoonBoard** for the climbing dataset
-- **LegoACE** paper for autoregressive generation inspiration
-- **Transformers library** for model utilities
+- **HuggingFace** for the Transformers library and DistilGPT-2
+- **OpenAI** for the GPT-2 architecture
 
 ---
 

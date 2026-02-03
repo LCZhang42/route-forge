@@ -1,6 +1,6 @@
-# Quick Start Guide - Autoregressive Climb Path Generation
+# Quick Start Guide - DistilGPT-2 Climb Path Generation
 
-This guide will help you train and use the LegoACE-inspired autoregressive model for generating MoonBoard climbing routes.
+This guide will help you train and use the fine-tuned DistilGPT-2 model for generating MoonBoard climbing routes with endpoint conditioning.
 
 ## Prerequisites
 
@@ -12,254 +12,244 @@ pip install -r requirements.txt
 
 ## Step 1: Prepare Data
 
-Your data should already be cleaned from the previous preprocessing step. Verify you have:
-
-```
-data/
-├── moonboard_train.csv
-├── moonboard_val.csv
-└── moonboard_test.csv
+### Quality Filtering
+```bash
+python check_data_quality.py
 ```
 
-Each CSV should contain:
-- `grade`: Grade string (6B, 6B+, ..., 8B+)
-- `full_path`: List of [x, y] coordinates
+### Reorder by Y-axis
+```bash
+python reorder_all_datasets.py
+```
+
+### Check Grade Balance
+```bash
+python analyze_grade_distribution.py
+```
+
+This creates:
+```
+data_reordered/
+├── moonboard_train_quality_filtered.csv  # 6,610 balanced routes
+├── moonboard_test_quality.csv
+└── moonboard_val_quality.csv
+```
 
 ## Step 2: Train the Model
 
 ### Basic Training
 
 ```bash
-cd backend
-python training/train_autoregressive.py
+# Windows
+train_distilgpt2.bat
+
+# Linux/Mac
+python backend/training/finetune_huggingface.py
 ```
 
 This will:
-- Train for 50 epochs (default)
-- Save checkpoints to `checkpoints/climb_path/`
+- Fine-tune DistilGPT-2 for 10 epochs
+- Save checkpoints to `checkpoints/distilgpt2_climb/`
 - Log metrics to TensorBoard
+- **Time**: ~2-3 hours on CPU, ~20 minutes on GPU
 
 ### Monitor Training
 
 ```bash
-tensorboard --logdir runs/climb_path
+tensorboard --logdir checkpoints/distilgpt2_climb/logs
 ```
 
 Open http://localhost:6006 to view:
 - Training/validation loss curves
 - Learning rate schedule
-- Other metrics
+- Target: validation loss < 2.0
 
 ### Custom Training Configuration
 
 ```bash
-python training/train_autoregressive.py \
-    --batch_size 64 \
-    --num_epochs 100 \
-    --learning_rate 1e-4 \
-    --d_model 512 \
-    --num_layers 8 \
-    --warmup_steps 2000
+python backend/training/finetune_huggingface.py \
+    --batch_size 8 \
+    --num_epochs 15 \
+    --learning_rate 5e-5 \
+    --max_length 128
 ```
 
-**Recommended settings for better results:**
-- Increase `d_model` to 512 for more capacity
-- Increase `num_layers` to 8-12 for complex patterns
-- Use larger `batch_size` if you have GPU memory
-- Train for 100+ epochs for best performance
+**Recommended settings:**
+- Reduce `batch_size` to 4-8 for CPU training
+- Reduce `max_length` to 128 for faster training
+- Use 5-10 epochs (more doesn't help much)
+- Default settings work well for most cases
 
 ## Step 3: Generate Climb Paths
 
-### Generate with Visualization
+### Interactive Generation
 
 ```bash
-python training/generate_paths.py \
+# Windows
+generate_paths.bat
+
+# Linux/Mac
+python backend/training/generate_with_gpt2.py
+```
+
+You'll be prompted to enter:
+- Grade (e.g., 7A)
+- Start hold (e.g., 0,4)
+- End hold (e.g., 8,17)
+
+### Command Line Generation
+
+```bash
+python backend/training/generate_with_gpt2.py \
     --grade 7A \
-    --num_samples 5 \
-    --visualize
+    --start_hold 0,4 \
+    --end_hold 8,17 \
+    --num_samples 5
 ```
 
 Output:
 ```
-Climb Path - Grade: 7A
-Number of holds: 5
-
-   01234567890
-  +-----------+
-17|.....5.....|
-16|...........|
-15|...........|
-14|...........|
-13|...4.......|
-12|...........|
-11|..3........|
-10|...........|
- 9|...........|
- 8|.2.........|
- 7|...........|
- 6|...........|
- 5|...........|
- 4|1..........|
- 3|...........|
- 2|...........|
- 1|...........|
-  +-----------+
+Sample 1:
+  Generated: GRADE: 7A | START: (0,4) | END: (8,17) | MID: (1,7) (3,11) (5,13)
+  Parsed Grade: 7A
+  Start Hold: [0, 4]
+  End Hold: [8, 17]
+  Intermediate Holds: [[1, 7], [3, 11], [5, 13]]
+  Total holds: 5
 ```
 
 ### Generate Multiple Grades
 
 ```bash
 # Easy routes
-python training/generate_paths.py --grade 6B --num_samples 10 --visualize
+python backend/training/generate_with_gpt2.py --grade 6B+ --num_samples 10
 
 # Hard routes
-python training/generate_paths.py --grade 8A+ --num_samples 10 --visualize
+python backend/training/generate_with_gpt2.py --grade 7C+ --num_samples 10
 ```
 
 ### Control Creativity
 
 ```bash
 # Conservative (more realistic)
-python training/generate_paths.py --grade 7A --temperature 0.5
+python backend/training/generate_with_gpt2.py --grade 7A --temperature 0.6
 
 # Creative (more diverse)
-python training/generate_paths.py --grade 7A --temperature 1.5
-```
-
-### Save to JSON
-
-```bash
-python training/generate_paths.py \
-    --grade 7B+ \
-    --num_samples 20 \
-    --temperature 0.8 \
-    --save_json outputs/7B+_routes.json
+python backend/training/generate_with_gpt2.py --grade 7A --temperature 1.2
 ```
 
 ## Step 4: Use in Python
 
 ```python
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import torch
-from models import (
-    ClimbPathTokenizer,
-    ClimbPathTransformerWithGeneration,
-    ClimbPathLogitsProcessor,
-    MinHoldsLogitsProcessor,
-    MaxHoldsLogitsProcessor,
-)
 
 # Load model
-tokenizer = ClimbPathTokenizer()
-model = ClimbPathTransformerWithGeneration(vocab_size=45)
-
-checkpoint = torch.load('checkpoints/climb_path/best.pt')
-model.load_state_dict(checkpoint['model_state_dict'])
+model = GPT2LMHeadModel.from_pretrained('checkpoints/distilgpt2_climb/final')
+tokenizer = GPT2Tokenizer.from_pretrained('checkpoints/distilgpt2_climb/final')
 model.eval()
 
-# Setup constraints
-logits_processors = [
-    ClimbPathLogitsProcessor(tokenizer),
-    MinHoldsLogitsProcessor(tokenizer, min_holds=3),
-    MaxHoldsLogitsProcessor(tokenizer, max_holds=20),
-]
-
 # Generate
-grade_token = tokenizer.encode_grade('7A')
-tokens = model.generate_with_processors(
-    grade_token=grade_token,
-    tokenizer=tokenizer,
-    logits_processors=logits_processors,
-    temperature=1.0,
-    device='cuda',
+prompt = "GRADE: 7A | START: (0,4) | END: (8,17) | MID:"
+input_ids = tokenizer.encode(prompt, return_tensors='pt')
+
+output = model.generate(
+    input_ids,
+    max_length=256,
+    temperature=0.8,
+    top_k=50,
+    top_p=0.95,
+    do_sample=True,
 )
 
 # Decode
-grade, holds = tokenizer.decode(tokens.cpu().numpy())
-print(f"Grade: {grade}")
-print(f"Holds: {holds}")
+generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+print(generated_text)
+# Output: GRADE: 7A | START: (0,4) | END: (8,17) | MID: (1,7) (3,11) (5,13)
 ```
 
 ## Understanding the Model
 
 ### Architecture
-- **Type**: Transformer decoder (autoregressive)
-- **Size**: ~2.5M parameters (default config)
-- **Vocabulary**: 45 tokens (BOS, 14 grades, 11 x-coords, 17 y-coords, EOS)
-- **Sequence**: `[BOS, grade, x1, y1, x2, y2, ..., EOS]`
+- **Type**: Fine-tuned DistilGPT-2 (Causal Language Model)
+- **Size**: 82M parameters (6 layers, 768 hidden size)
+- **Vocabulary**: ~50k tokens (GPT-2 tokenizer)
+- **Format**: Text-based climbing path representation
 
 ### How It Works
 
-1. **Input**: Grade token (e.g., "7A" → token 6)
-2. **Generation**: Model predicts next token autoregressively
-3. **Constraints**: Logits processors ensure valid tokens at each position
-4. **Output**: Sequence of holds `[(x1, y1), (x2, y2), ...]`
+1. **Input**: `GRADE: 7A | START: (0,4) | END: (8,17) | MID:`
+2. **Generation**: Model predicts intermediate holds as text
+3. **Endpoint Conditioning**: Start and end positions guide generation
+4. **Output**: `GRADE: 7A | START: (0,4) | END: (8,17) | MID: (1,7) (3,11) (5,13)`
 
 ### Key Features
 
-✅ **Structural Validity**: Logits processors ensure only valid coordinates  
+✅ **Endpoint Conditioning**: Control start and end positions  
 ✅ **Grade Conditioning**: Generates routes matching target difficulty  
-✅ **Variable Length**: Handles 3-30 holds naturally  
-✅ **Spatial Learning**: Discovers reachability patterns from data  
+✅ **Pre-trained Knowledge**: Leverages GPT-2's sequence understanding  
+✅ **Fast Training**: 2-3 hours on CPU, 20 minutes on GPU  
 
 ## Tips for Best Results
 
 ### Training
-1. **More data = better**: Use all 11k+ routes
-2. **Train longer**: 100+ epochs for convergence
-3. **Larger model**: Try d_model=512, num_layers=8
-4. **Monitor validation**: Stop if val_loss stops improving
+1. **Use quality-filtered data**: Balanced grades, high-quality routes
+2. **Monitor validation loss**: Should be < 2.0 after 10 epochs
+3. **Don't overtrain**: 10 epochs is usually enough
+4. **Check grade balance**: Use `analyze_grade_distribution.py`
 
 ### Generation
 1. **Temperature tuning**: 
-   - 0.5-0.7 for realistic routes
-   - 0.8-1.0 for balanced
-   - 1.2-1.5 for creative/diverse
-2. **Constraints**: Keep enabled for valid routes
-3. **Multiple samples**: Generate 10-20 to pick best
-4. **Grade matching**: Model learns grade patterns from data
+   - 0.6-0.8 for realistic routes
+   - 0.8-1.0 for balanced (default)
+   - 1.0-1.2 for creative/diverse
+2. **Specify endpoints**: Control start/end for better results
+3. **Multiple samples**: Generate 5-10 to pick best
+4. **Grade matching**: Model respects grade conditioning well
 
 ## Troubleshooting
 
-### Model generates invalid sequences
-- Ensure logits processors are enabled
-- Check tokenizer is working correctly
-- Verify training data quality
+### Model generates invalid paths
+- Check training data quality
+- Verify grade balance (use `analyze_grade_distribution.py`)
+- Try lower temperature (0.6-0.7)
 
 ### Training loss not decreasing
-- Reduce learning rate (try 5e-5)
-- Increase warmup steps
-- Check data preprocessing
+- Ensure validation loss < 2.0 after 10 epochs
+- Check data format (should be endpoint conditioning format)
+- Verify CSV files are in `data_reordered/`
 
-### Out of memory
-- Reduce batch_size
-- Reduce max_seq_len
-- Use smaller model (d_model=128, num_layers=4)
+### Training too slow
+- Reduce batch_size to 4-8 for CPU
+- Reduce max_length to 128
+- Reduce num_epochs to 5
+- See TRAINING_SPEED_GUIDE.md
 
 ## Next Steps
 
-1. **Evaluate quality**: Compare generated routes to real ones
-2. **Add constraints**: Implement reachability distance checks
-3. **Fine-tune**: Adjust on high-quality routes only
-4. **Deploy**: Integrate with web frontend
-5. **Extend**: Add start/end position conditioning
+1. **Use Gradio interface**: `start_web_interface.bat`
+2. **Visualize paths**: `python visualize_path.py`
+3. **Experiment with endpoints**: Try different start/end positions
+4. **Adjust temperature**: Find the sweet spot for your use case
+5. **Deploy**: Integrate with web frontend or API
 
-## Comparison with LegoACE
+## Model Advantages
 
-Your model is **simpler and more efficient** than LegoACE:
+**Why DistilGPT-2?**
 
-| Metric | LegoACE | Your Model |
-|--------|---------|------------|
-| Tokens per item | 5 | 2 |
-| Vocabulary | ~16,000 | 45 |
-| Model size | LLaMA (billions) | Custom (millions) |
-| Training time | Days (multi-GPU) | Hours (single GPU) |
-| Domain | 3D assembly | 2D climbing |
+| Feature | Benefit |
+|---------|--------|
+| Pre-trained | Understands sequences out of the box |
+| Lightweight | 82M params (fast training/inference) |
+| Text-based | Natural format for climbing paths |
+| Endpoint conditioning | Control start/end positions |
+| Fast training | 2-3 hours on CPU |
 
-The same **core principles** apply:
-- Autoregressive generation
-- Structural constraints via logits processors
-- Conditional generation (grade vs text)
-- Variable-length sequences
+**Key principles**:
+- Causal language modeling (next-token prediction)
+- Endpoint conditioning (specify start/end)
+- Grade conditioning (control difficulty)
+- Text-based representation (easy to parse)
 
 ---
 
