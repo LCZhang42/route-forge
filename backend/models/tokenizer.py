@@ -111,6 +111,44 @@ class ClimbPathTokenizer:
         
         return np.array(tokens, dtype=np.int32)
     
+    def encode_with_endpoints(self, grade: str, holds: List[List[int]]) -> np.ndarray:
+        """
+        Encode climb path with explicit start and end holds as conditioning.
+        
+        The model will learn to generate the path between start and end holds.
+        
+        Args:
+            grade: Grade string (e.g., '7A')
+            holds: List of [x, y] coordinates (full path including start and end)
+            
+        Returns:
+            Token sequence: [BOS, grade, start_x, start_y, end_x, end_y, x2, y2, ..., xn-1, yn-1, EOS]
+            where x2,y2,...,xn-1,yn-1 are the intermediate holds (excluding start and end)
+        """
+        if len(holds) < 2:
+            raise ValueError(f"Path must have at least start and end holds, got {len(holds)} holds")
+        
+        # Start with BOS and grade
+        tokens = [self.BOS_TOKEN, self.encode_grade(grade)]
+        
+        # Add start hold (first hold)
+        start_hold = holds[0]
+        tokens.extend(self.encode_hold(start_hold[0], start_hold[1]))
+        
+        # Add end hold (last hold)
+        end_hold = holds[-1]
+        tokens.extend(self.encode_hold(end_hold[0], end_hold[1]))
+        
+        # Add intermediate holds (everything between start and end)
+        for hold in holds[1:-1]:
+            if len(hold) != 2:
+                raise ValueError(f"Hold must be [x, y], got {hold}")
+            tokens.extend(self.encode_hold(hold[0], hold[1]))
+        
+        tokens.append(self.EOS_TOKEN)
+        
+        return np.array(tokens, dtype=np.int32)
+    
     def decode(self, tokens: np.ndarray) -> Tuple[str, List[Tuple[int, int]]]:
         """
         Decode token sequence to grade and holds.
@@ -147,6 +185,58 @@ class ClimbPathTokenizer:
             i += 2
         
         return grade, holds
+    
+    def decode_with_endpoints(self, tokens: np.ndarray) -> Tuple[str, Tuple[int, int], Tuple[int, int], List[Tuple[int, int]]]:
+        """
+        Decode endpoint-conditioned token sequence.
+        
+        Args:
+            tokens: Token sequence [BOS, grade, start_x, start_y, end_x, end_y, x2, y2, ..., EOS]
+            
+        Returns:
+            (grade, start_hold, end_hold, intermediate_holds)
+        """
+        # Convert to list if it's a numpy array or torch tensor
+        if isinstance(tokens, np.ndarray):
+            tokens = tokens.tolist()
+        elif hasattr(tokens, 'tolist'):  # PyTorch tensor
+            tokens = tokens.tolist()
+        elif not isinstance(tokens, list):
+            tokens = list(tokens)
+        
+        if tokens[0] != self.BOS_TOKEN:
+            raise ValueError("Sequence must start with BOS token")
+        
+        if len(tokens) < 7:  # BOS, grade, start_x, start_y, end_x, end_y, EOS
+            raise ValueError(f"Sequence too short for endpoint conditioning: {len(tokens)} tokens")
+        
+        # Decode grade
+        grade_token = tokens[1]
+        grade = self.decode_grade(grade_token)
+        
+        # Decode start hold (positions 2-3)
+        start_hold = self.decode_hold(tokens[2], tokens[3])
+        
+        # Decode end hold (positions 4-5)
+        end_hold = self.decode_hold(tokens[4], tokens[5])
+        
+        # Decode intermediate holds (from position 6 onwards)
+        intermediate_holds = []
+        i = 6
+        while i < len(tokens) - 1:  # -1 to skip EOS
+            if i + 1 >= len(tokens):
+                break
+            x_token = tokens[i]
+            y_token = tokens[i + 1]
+            
+            # Stop if we hit EOS
+            if x_token == self.EOS_TOKEN or y_token == self.EOS_TOKEN:
+                break
+            
+            intermediate_holds.append(self.decode_hold(x_token, y_token))
+            i += 2
+        
+        return grade, start_hold, end_hold, intermediate_holds
     
     def get_token_type(self, position: int) -> str:
         """

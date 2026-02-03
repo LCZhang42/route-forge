@@ -176,6 +176,8 @@ class ClimbPathTransformer(nn.Module):
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
         device: str = 'cpu',
+        start_hold: Optional[Tuple[int, int]] = None,
+        end_hold: Optional[Tuple[int, int]] = None,
     ) -> torch.Tensor:
         """
         Generate a climb path autoregressively.
@@ -188,6 +190,8 @@ class ClimbPathTransformer(nn.Module):
             top_k: Top-k sampling parameter
             top_p: Nucleus sampling parameter
             device: Device to run on
+            start_hold: Optional (x, y) tuple for start hold conditioning
+            end_hold: Optional (x, y) tuple for end hold conditioning
             
         Returns:
             Generated token sequence
@@ -195,14 +199,49 @@ class ClimbPathTransformer(nn.Module):
         self.eval()
         
         # Start with BOS and grade token
-        generated = torch.tensor([[tokenizer.BOS_TOKEN, grade_token]], dtype=torch.long, device=device)
+        initial_tokens = [tokenizer.BOS_TOKEN, grade_token]
         
-        for _ in range(max_length - 2):  # -2 for BOS and grade
+        # Add start and end holds if provided (endpoint conditioning)
+        if start_hold is not None and end_hold is not None:
+            start_x, start_y = start_hold
+            end_x, end_y = end_hold
+            initial_tokens.extend([
+                tokenizer.encode_x_coord(start_x),
+                tokenizer.encode_y_coord(start_y),
+                tokenizer.encode_x_coord(end_x),
+                tokenizer.encode_y_coord(end_y),
+            ])
+            max_gen_length = max_length - 6  # BOS, grade, start_x, start_y, end_x, end_y
+        else:
+            max_gen_length = max_length - 2  # BOS and grade
+        
+        generated = torch.tensor([initial_tokens], dtype=torch.long, device=device)
+        
+        for _ in range(max_gen_length):
             # Forward pass
             logits = self.forward(generated)  # [1, seq_len, vocab_size]
             
             # Get logits for next token
             next_token_logits = logits[0, -1, :] / temperature
+            
+            # Apply token type masking based on position
+            current_pos = generated.shape[1]
+            expected_type = tokenizer.get_token_type(current_pos)
+            
+            # Create mask for invalid tokens (True = invalid, will be masked)
+            mask = torch.ones_like(next_token_logits, dtype=torch.bool)
+            
+            if expected_type == 'x':
+                # Only allow X coordinate tokens (16-26) and EOS
+                mask[tokenizer.X_COORD_START:tokenizer.Y_COORD_START] = False  # Valid X coords
+                mask[tokenizer.EOS_TOKEN] = False  # Allow EOS
+            elif expected_type == 'y':
+                # Only allow Y coordinate tokens (27-44) and EOS
+                mask[tokenizer.Y_COORD_START:tokenizer.EOS_TOKEN] = False  # Valid Y coords
+                mask[tokenizer.EOS_TOKEN] = False  # Allow EOS
+            
+            # Apply mask (set invalid tokens to -inf)
+            next_token_logits[mask] = -float('inf')
             
             # Apply top-k filtering
             if top_k is not None:

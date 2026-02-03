@@ -20,6 +20,7 @@ class ClimbPathDataset(Dataset):
         csv_path: str,
         tokenizer,
         max_seq_len: int = 128,
+        use_endpoint_conditioning: bool = False,
     ):
         """
         Initialize dataset.
@@ -28,9 +29,11 @@ class ClimbPathDataset(Dataset):
             csv_path: Path to CSV file with climb data
             tokenizer: ClimbPathTokenizer instance
             max_seq_len: Maximum sequence length (for padding)
+            use_endpoint_conditioning: If True, encode with start/end holds as conditioning
         """
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len
+        self.use_endpoint_conditioning = use_endpoint_conditioning
         
         # Load data
         self.df = pd.read_csv(csv_path)
@@ -40,6 +43,7 @@ class ClimbPathDataset(Dataset):
             self.df['full_path'] = self.df['full_path'].apply(ast.literal_eval)
         
         print(f"Loaded {len(self.df)} climb paths from {csv_path}")
+        print(f"Endpoint conditioning: {use_endpoint_conditioning}")
         print(f"Grade distribution:")
         print(self.df['grade'].value_counts().sort_index())
     
@@ -59,7 +63,10 @@ class ClimbPathDataset(Dataset):
         holds = row['full_path']
         
         # Encode to tokens
-        tokens = self.tokenizer.encode(grade, holds)
+        if self.use_endpoint_conditioning:
+            tokens = self.tokenizer.encode_with_endpoints(grade, holds)
+        else:
+            tokens = self.tokenizer.encode(grade, holds)
         
         # Create attention mask (1 for real tokens, 0 for padding)
         seq_len = len(tokens)
@@ -118,6 +125,7 @@ class ClimbPathDataModule:
         batch_size: int = 32,
         max_seq_len: int = 128,
         num_workers: int = 4,
+        use_endpoint_conditioning: bool = False,
     ):
         """
         Initialize data module.
@@ -130,6 +138,7 @@ class ClimbPathDataModule:
             batch_size: Batch size for DataLoader
             max_seq_len: Maximum sequence length
             num_workers: Number of DataLoader workers
+            use_endpoint_conditioning: If True, encode with start/end holds as conditioning
         """
         self.train_csv = train_csv
         self.val_csv = val_csv
@@ -138,6 +147,7 @@ class ClimbPathDataModule:
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
         self.num_workers = num_workers
+        self.use_endpoint_conditioning = use_endpoint_conditioning
         
         self.train_dataset = None
         self.val_dataset = None
@@ -151,18 +161,21 @@ class ClimbPathDataModule:
             self.train_csv,
             self.tokenizer,
             self.max_seq_len,
+            self.use_endpoint_conditioning,
         )
         
         self.val_dataset = ClimbPathDataset(
             self.val_csv,
             self.tokenizer,
             self.max_seq_len,
+            self.use_endpoint_conditioning,
         )
         
         self.test_dataset = ClimbPathDataset(
             self.test_csv,
             self.tokenizer,
             self.max_seq_len,
+            self.use_endpoint_conditioning,
         )
         
         print(f"\nDataset sizes:")

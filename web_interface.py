@@ -21,6 +21,8 @@ from backend.training.generate_paths import load_model, generate_climb_path
 from backend.models.valid_holds import load_valid_holds_from_dataset
 from backend.models.climb_constraints import load_constraints, get_random_hold_count
 from visualize_path import MoonBoardVisualizer
+import ast
+import pandas as pd
 
 
 # Global variables for model and resources
@@ -30,11 +32,52 @@ device = None
 valid_holds = None
 visualizer = None
 grade_constraints = None
+endpoints_by_grade = None
+
+
+def load_benchmark_endpoints(csv_path='data/moonboard_test_benchmark.csv'):
+    """
+    Load start and end points from benchmark dataset.
+    
+    Returns:
+        dict: {grade: {'start_points': [...], 'end_points': [...]}}
+    """
+    df = pd.read_csv(csv_path)
+    
+    # Parse start_holds and end_holds if they're strings
+    if isinstance(df['start_holds'].iloc[0], str):
+        df['start_holds'] = df['start_holds'].apply(ast.literal_eval)
+    if isinstance(df['end_holds'].iloc[0], str):
+        df['end_holds'] = df['end_holds'].apply(ast.literal_eval)
+    
+    # Group by grade
+    endpoints_by_grade = {}
+    for grade in df['grade'].unique():
+        grade_df = df[df['grade'] == grade]
+        
+        # Collect all start points (flatten list of lists)
+        start_points = []
+        for holds_list in grade_df['start_holds']:
+            start_points.extend(holds_list)
+        
+        # Collect all end points (flatten list of lists)
+        end_points = []
+        for holds_list in grade_df['end_holds']:
+            end_points.extend(holds_list)
+        
+        endpoints_by_grade[grade] = {
+            'start_points': start_points,
+            'end_points': end_points
+        }
+        
+        print(f"  Grade {grade}: {len(start_points)} start points, {len(end_points)} end points")
+    
+    return endpoints_by_grade
 
 
 def initialize_resources():
     """Initialize model, tokenizer, and valid holds."""
-    global model, tokenizer, device, valid_holds, visualizer
+    global model, tokenizer, device, valid_holds, visualizer, endpoints_by_grade
     
     print("Initializing resources...")
     
@@ -75,13 +118,24 @@ def initialize_resources():
         print(f"Warning: Grade constraints not found at {constraints_path}")
         grade_constraints = None
     
+    # Load benchmark endpoints
+    benchmark_path = Path("data/moonboard_test_benchmark.csv")
+    if benchmark_path.exists():
+        print("Loading benchmark endpoints...")
+        endpoints_by_grade = load_benchmark_endpoints(str(benchmark_path))
+        print(f"Loaded endpoints for {len(endpoints_by_grade)} grades")
+    else:
+        print(f"Warning: Benchmark data not found at {benchmark_path}")
+        endpoints_by_grade = None
+    
     print("Resources initialized successfully!")
 
 
 def generate_and_visualize(
     grade: str,
     valid_holds_only: bool,
-    temperature: float
+    temperature: float,
+    use_endpoint_conditioning: bool
 ) -> Tuple[Optional[Image.Image], str]:
     """
     Generate a climb path and create visualization.
@@ -92,36 +146,76 @@ def generate_and_visualize(
         grade: Climbing grade
         valid_holds_only: Whether to only generate valid holds
         temperature: Sampling temperature
+        use_endpoint_conditioning: Whether to use random start/end from benchmark
         
     Returns:
         (image, info_text) tuple
     """
     try:
-        # Determine whether to use valid holds constraint
-        holds_constraint = valid_holds if valid_holds_only else None
-        
-        # Get random hold count based on grade distribution
-        if grade_constraints and grade in grade_constraints:
-            min_holds = max(3, int(grade_constraints[grade]['hold_count_mean'] - grade_constraints[grade]['hold_count_std']))
-            max_holds = min(30, int(grade_constraints[grade]['hold_count_mean'] + grade_constraints[grade]['hold_count_std']))
+        # Check if using endpoint conditioning
+        if use_endpoint_conditioning:
+            if endpoints_by_grade is None or grade not in endpoints_by_grade:
+                return None, f"**Error:** Endpoint conditioning enabled but no benchmark data available for grade {grade}"
+            
+            # Randomly select start and end points from benchmark
+            start_points = endpoints_by_grade[grade]['start_points']
+            end_points = endpoints_by_grade[grade]['end_points']
+            
+            start_hold = tuple(start_points[np.random.randint(len(start_points))])
+            end_hold = tuple(end_points[np.random.randint(len(end_points))])
+            
+            print(f"Generating path with endpoint conditioning for grade {grade}")
+            print(f"  Start: {start_hold}, End: {end_hold}")
+            
+            # Encode grade
+            grade_token = tokenizer.encode_grade(grade)
+            
+            # Generate path with endpoints
+            generated_tokens = model.generate(
+                grade_token=grade_token,
+                tokenizer=tokenizer,
+                start_hold=start_hold,
+                end_hold=end_hold,
+                max_length=64,
+                temperature=temperature,
+                device=device,
+            )
+            
+            # Debug: print generated tokens
+            print(f"  Generated tokens: {generated_tokens.tolist()[:10]}...")
+            print(f"  Token at position 1 (grade): {generated_tokens[1].item()}")
+            
+            # Decode
+            generated_grade, start_dec, end_dec, intermediate_holds = tokenizer.decode_with_endpoints(generated_tokens)
+            holds = [start_dec] + list(intermediate_holds) + [end_dec]
+            
         else:
-            min_holds = 5
-            max_holds = 15
-        
-        # Generate path
-        print(f"Generating path for grade {grade} ({min_holds}-{max_holds} holds)...")
-        generated_grade, holds = generate_climb_path(
-            model=model,
-            tokenizer=tokenizer,
-            grade=grade,
-            device=device,
-            temperature=temperature,
-            min_holds=min_holds,
-            max_holds=max_holds,
-            use_constraints=True,
-            valid_holds=holds_constraint,
-            use_reachability=False,  # Disabled - model already trained with reordered paths
-        )
+            # Original generation without endpoint conditioning
+            # Determine whether to use valid holds constraint
+            holds_constraint = valid_holds if valid_holds_only else None
+            
+            # Get random hold count based on grade distribution
+            if grade_constraints and grade in grade_constraints:
+                min_holds = max(3, int(grade_constraints[grade]['hold_count_mean'] - grade_constraints[grade]['hold_count_std']))
+                max_holds = min(30, int(grade_constraints[grade]['hold_count_mean'] + grade_constraints[grade]['hold_count_std']))
+            else:
+                min_holds = 5
+                max_holds = 15
+            
+            # Generate path
+            print(f"Generating path for grade {grade} ({min_holds}-{max_holds} holds)...")
+            generated_grade, holds = generate_climb_path(
+                model=model,
+                tokenizer=tokenizer,
+                grade=grade,
+                device=device,
+                temperature=temperature,
+                min_holds=min_holds,
+                max_holds=max_holds,
+                use_constraints=True,
+                valid_holds=holds_constraint,
+                use_reachability=False,
+            )
         
         # Create visualization
         import tempfile
@@ -137,12 +231,18 @@ def generate_and_visualize(
         info_lines = [
             f"**Grade:** {generated_grade}",
             f"**Number of Holds:** {len(holds)}",
-            f"**Valid Holds Only:** {'Yes' if valid_holds_only else 'No'}",
+            f"**Mode:** {'Endpoint Conditioning' if use_endpoint_conditioning else 'Free Generation'}",
             f"**Temperature:** {temperature}",
-            f"**Hold Range:** {min_holds}-{max_holds} (based on grade distribution)",
-            "",
-            "**Hold Sequence:**"
         ]
+        
+        if use_endpoint_conditioning:
+            info_lines.append(f"**Start Hold:** [{holds[0][0]}, {holds[0][1]}] = {chr(ord('A') + holds[0][0])}{holds[0][1]}")
+            info_lines.append(f"**End Hold:** [{holds[-1][0]}, {holds[-1][1]}] = {chr(ord('A') + holds[-1][0])}{holds[-1][1]}")
+            info_lines.append(f"**Intermediate Holds:** {len(holds) - 2}")
+        else:
+            info_lines.append(f"**Valid Holds Only:** {'Yes' if valid_holds_only else 'No'}")
+        
+        info_lines.extend(["", "**Hold Sequence:**"])
         
         for i, (x, y) in enumerate(holds[:10]):  # Show first 10 holds
             col = chr(ord('A') + x)
@@ -198,10 +298,16 @@ def create_interface():
                     info="Select the difficulty grade for the climb"
                 )
                 
+                endpoint_conditioning_toggle = gr.Checkbox(
+                    value=True,
+                    label="Endpoint Conditioning",
+                    info="Use random start/end from benchmark dataset (recommended for trained model)"
+                )
+                
                 valid_holds_toggle = gr.Checkbox(
                     value=False,
                     label="Valid Holds Only",
-                    info="Only generate holds that exist on MoonBoard 2016 (may cause flat paths)"
+                    info="Only generate holds that exist on MoonBoard 2016 (only for free generation)"
                 )
                 
                 gr.Markdown("### Advanced Parameters")
@@ -254,7 +360,8 @@ def create_interface():
             inputs=[
                 grade_dropdown,
                 valid_holds_toggle,
-                temperature_slider
+                temperature_slider,
+                endpoint_conditioning_toggle
             ],
             outputs=[output_image, info_text]
         )
@@ -267,13 +374,20 @@ def create_interface():
             This tool uses a transformer-based AI model trained on thousands of real MoonBoard climbs.
             The model learns patterns in climbing sequences and generates new, realistic paths.
             
-            **Valid Holds Mode:** When enabled, the generator only creates holds at positions where 
-            physical boulders exist on the MoonBoard 2016 (141 out of 198 possible positions).
+            **Endpoint Conditioning Mode (Recommended):** The model generates intermediate holds between 
+            randomly selected start and end points from the benchmark dataset. This produces more realistic 
+            and controlled paths since the model was trained with this approach.
+            
+            **Free Generation Mode:** The model generates the entire path from scratch without constraints.
+            Use this for more creative exploration (requires model trained without endpoint conditioning).
+            
+            **Valid Holds Mode:** Only applies to free generation. Restricts holds to positions where 
+            physical boulders exist on the MoonBoard 2016.
             
             **Tips:**
             - Lower temperature (0.5-0.8) = More conservative, realistic paths
             - Higher temperature (1.2-2.0) = More creative, varied paths
-            - Start with default settings and adjust based on results
+            - Endpoint conditioning is recommended for the current trained model
             """
         )
     
