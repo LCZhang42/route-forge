@@ -1,10 +1,3 @@
 @echo off
-REM Start the FastAPI backend server
-
-echo Starting Climb Path Generator API Server...
-echo.
-
-cd backend\api
-python server.py
-
-pause
+REM Serve the FastAPI backend from Modal; model weights remain remote.
+python -m modal serve modal_app.py

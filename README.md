@@ -1,5 +1,10 @@
 # Climb Path Generator 🧗‍♂️
 
+> **Current runtime:** model training and inference are hosted on Modal. Model
+> weights are not stored or executed locally. See
+> [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) for the smoke-train, training,
+> and deployment commands.
+
 AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
 
 ## 🎯 Features

@@ -4,7 +4,15 @@ Test script for tokenizer functionality.
 Run this to verify the tokenizer works correctly before training.
 """
 
-from tokenizer import ClimbPathTokenizer
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+try:
+    from backend.models.tokenizer import ClimbPathTokenizer
+except ModuleNotFoundError:  # Allows direct execution from backend/models.
+    from tokenizer import ClimbPathTokenizer
 
 
 def test_tokenizer():
@@ -17,7 +25,7 @@ def test_tokenizer():
     
     # Test 1: Vocabulary size
     print(f"\n1. Vocabulary size: {tokenizer.vocab_size}")
-    assert tokenizer.vocab_size == 45, "Vocab size should be 45"
+    assert tokenizer.vocab_size == 46, "Vocab size should be 46"
     print("   ✓ Correct")
     
     # Test 2: Grade encoding/decoding

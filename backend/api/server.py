@@ -1,171 +1,201 @@
-"""
-FastAPI server for Climb Path Generator.
+"""FastAPI service for the Modal-hosted DistilGPT-2 baseline."""
 
-Provides REST API endpoints for generating climbing paths.
-"""
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Tuple, Optional
-import torch
-import sys
-from pathlib import Path
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-sys.path.append(str(Path(__file__).parent.parent))
-
-from models.tokenizer import ClimbPathTokenizer
-from models.climb_transformer import ClimbPathTransformerWithGeneration
-from models.logits_processor import (
-    ClimbPathLogitsProcessor,
-    MinHoldsLogitsProcessor,
-    MaxHoldsLogitsProcessor,
-    ValidHoldsLogitsProcessor,
-    NoRepeatHoldsLogitsProcessor,
-)
-from models.valid_holds import load_valid_holds_from_dataset
-from training.generate_paths import load_model, generate_climb_path
-
-
-app = FastAPI(title="Climb Path Generator API", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from backend.climb_path.inference import DistilGPT2Generator
+from backend.climb_path.schema import Hold, SUPPORTED_GRADES
+from backend.models.valid_holds import load_valid_holds_from_dataset
 
 
 class GenerateRequest(BaseModel):
-    grade: str = Field(..., description="Climbing grade (e.g., '7A', '6B+', '8A')")
-    temperature: float = Field(1.0, ge=0.1, le=2.0, description="Sampling temperature")
-    min_holds: int = Field(3, ge=1, le=50, description="Minimum number of holds")
-    max_holds: int = Field(30, ge=1, le=50, description="Maximum number of holds")
-    use_constraints: bool = Field(True, description="Enable constraint enforcement")
-    valid_holds_only: bool = Field(True, description="Only generate valid MoonBoard 2016 holds")
+    grade: str = Field(..., description="Requested climbing grade")
+    start_hold: tuple[int, int] = Field((5, 4), description="Start hold [x, y]")
+    end_hold: tuple[int, int] = Field((5, 17), description="End hold [x, y]")
+    candidate_count: int = Field(1, ge=1, le=3)
+    temperature: float = Field(0.8, ge=0.1, le=1.5)
+    top_p: float = Field(0.95, gt=0.0, le=1.0)
+    seed: int | None = Field(None, ge=0)
+
+    @field_validator("grade")
+    @classmethod
+    def validate_grade(cls, value: str) -> str:
+        if value not in SUPPORTED_GRADES:
+            raise ValueError(f"grade must be one of {', '.join(SUPPORTED_GRADES)}")
+        return value
+
+    @field_validator("start_hold", "end_hold")
+    @classmethod
+    def validate_hold(cls, value: tuple[int, int]) -> tuple[int, int]:
+        Hold.from_pair(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_different_endpoints(self) -> "GenerateRequest":
+        if self.start_hold == self.end_hold:
+            raise ValueError("start_hold and end_hold must be different")
+        return self
 
 
-class PathResponse(BaseModel):
-    path: List[List[int]]
+class CandidateResponse(BaseModel):
+    path: list[list[int]]
     grade: str
     num_holds: int
-    quality_score: Optional[float] = None
+    warnings: list[str]
+    seed: int | None = None
 
 
-model = None
-tokenizer = None
-device = None
-valid_holds = None
+class GenerateResponse(BaseModel):
+    path: list[list[int]]
+    grade: str
+    num_holds: int
+    warnings: list[str]
+    candidates: list[CandidateResponse]
+    model_version: str
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Load model on startup."""
-    global model, tokenizer, device, valid_holds
-    
-    checkpoint_path = Path(__file__).parent.parent.parent / "checkpoints" / "climb_path_cpu" / "best.pt"
-    
-    if not checkpoint_path.exists():
-        print(f"Warning: Model checkpoint not found at {checkpoint_path}")
-        print("API will start but generation will fail until model is available")
-        return
-    
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Loading model on {device}...")
-    
-    model, config = load_model(str(checkpoint_path), device)
-    tokenizer = ClimbPathTokenizer()
-    
-    # Load valid holds from dataset
-    train_csv_path = Path(__file__).parent.parent.parent / "data" / "moonboard_train_quality.csv"
-    if train_csv_path.exists():
-        print("Loading valid MoonBoard 2016 hold positions...")
-        valid_holds = load_valid_holds_from_dataset(str(train_csv_path))
-        print(f"Loaded {len(valid_holds)} valid holds")
-    else:
-        print(f"Warning: Training data not found at {train_csv_path}")
-        print("Valid holds constraint will be disabled")
-    
-    print("Model loaded successfully!")
+def _allowed_origins() -> list[str]:
+    configured = os.environ.get(
+        "CLIMB_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:5173",
+    )
+    return [origin.strip() for origin in configured.split(",") if origin.strip()]
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "Climb Path Generator API",
-        "version": "1.0.0",
-        "status": "running" if model is not None else "model not loaded"
-    }
-
-
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "model_loaded": model is not None
-    }
-
-
-@app.get("/api/grades")
-async def get_grades():
-    """Get list of available climbing grades."""
-    if tokenizer is None:
-        tokenizer_temp = ClimbPathTokenizer()
-        return {"grades": tokenizer_temp.GRADES}
-    return {"grades": tokenizer.GRADES}
-
-
-@app.post("/api/generate", response_model=PathResponse)
-async def generate_path(request: GenerateRequest):
-    """Generate a climbing path."""
-    if model is None or tokenizer is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please ensure the model checkpoint exists."
+def create_app(
+    model_dir: str | Path | None = None,
+    valid_holds_csv: str | Path | None = None,
+) -> FastAPI:
+    configured_model_dir = Path(
+        model_dir or os.environ.get("CLIMB_MODEL_DIR", "/models/distilgpt2-baseline/final")
+    )
+    configured_holds_csv = Path(
+        valid_holds_csv
+        or os.environ.get(
+            "CLIMB_VALID_HOLDS_CSV",
+            "/app/data_reordered/moonboard_train_quality_filtered.csv",
         )
-    
-    if request.grade not in tokenizer.GRADES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid grade '{request.grade}'. Valid grades: {', '.join(tokenizer.GRADES)}"
+    )
+
+    @asynccontextmanager
+    async def lifespan(web_app: FastAPI):
+        web_app.state.generator = None
+        web_app.state.load_error = None
+        if configured_model_dir.is_dir():
+            try:
+                holds = None
+                if configured_holds_csv.is_file():
+                    holds = load_valid_holds_from_dataset(str(configured_holds_csv))
+                web_app.state.generator = DistilGPT2Generator(
+                    configured_model_dir,
+                    valid_holds=holds,
+                )
+            except Exception as exc:  # readiness exposes only the error type
+                web_app.state.load_error = type(exc).__name__
+        else:
+            web_app.state.load_error = "model_not_found"
+        yield
+        web_app.state.generator = None
+
+    web_app = FastAPI(
+        title="Climb Path Generator API",
+        version="0.2.0",
+        lifespan=lifespan,
+    )
+    web_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins(),
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
+
+    @web_app.get("/")
+    async def root():
+        return {"name": "Climb Path Generator API", "version": "0.2.0"}
+
+    @web_app.get("/api/health/live")
+    @web_app.get("/api/health")
+    async def health_live():
+        return {"status": "healthy"}
+
+    @web_app.get("/api/health/ready")
+    async def health_ready():
+        if web_app.state.generator is None:
+            raise HTTPException(status_code=503, detail="Model is not ready")
+        return {"status": "ready"}
+
+    @web_app.get("/api/grades")
+    async def get_grades():
+        return {"grades": list(SUPPORTED_GRADES)}
+
+    @web_app.get("/api/v1/model")
+    async def model_metadata():
+        return {
+            "model": "distilgpt2-baseline",
+            "model_loaded": web_app.state.generator is not None,
+            "supported_grades": list(SUPPORTED_GRADES),
+            "board": "MoonBoard 2016",
+            "endpoint_cardinality": {"start": 1, "end": 1},
+        }
+
+    @web_app.post("/api/generate", response_model=GenerateResponse)
+    @web_app.post("/api/v1/routes/generate", response_model=GenerateResponse)
+    async def generate_path(request: GenerateRequest):
+        generator: DistilGPT2Generator | None = web_app.state.generator
+        if generator is None:
+            raise HTTPException(status_code=503, detail="Model is not ready")
+
+        try:
+            candidates = generator.generate(
+                grade=request.grade,
+                start_hold=Hold.from_pair(request.start_hold),
+                end_hold=Hold.from_pair(request.end_hold),
+                candidate_count=request.candidate_count,
+                temperature=request.temperature,
+                top_p=request.top_p,
+                seed=request.seed,
+            )
+        except Exception:
+            raise HTTPException(status_code=500, detail="Route generation failed") from None
+
+        if not candidates:
+            raise HTTPException(status_code=422, detail="No parseable route was generated")
+
+        responses = [
+            CandidateResponse(
+                path=candidate.route.as_pairs(),
+                grade=candidate.route.grade,
+                num_holds=len(candidate.route.holds),
+                warnings=list(candidate.warnings),
+                seed=request.seed,
+            )
+            for candidate in candidates
+        ]
+        first = responses[0]
+        return GenerateResponse(
+            path=first.path,
+            grade=first.grade,
+            num_holds=first.num_holds,
+            warnings=first.warnings,
+            candidates=responses,
+            model_version="distilgpt2-baseline",
         )
-    
-    try:
-        # Use valid holds constraint if requested and available
-        holds_constraint = valid_holds if request.valid_holds_only else None
-        
-        grade, holds = generate_climb_path(
-            model=model,
-            tokenizer=tokenizer,
-            grade=request.grade,
-            device=device,
-            temperature=request.temperature,
-            min_holds=request.min_holds,
-            max_holds=request.max_holds,
-            use_constraints=request.use_constraints,
-            valid_holds=holds_constraint,
-        )
-        
-        path = [[int(x), int(y)] for x, y in holds]
-        
-        return PathResponse(
-            path=path,
-            grade=grade,
-            num_holds=len(holds),
-            quality_score=None
-        )
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generating path: {str(e)}"
-        )
+
+    return web_app
+
+
+app = create_app()
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

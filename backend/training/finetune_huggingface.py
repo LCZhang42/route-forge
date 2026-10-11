@@ -9,41 +9,42 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import argparse
+import ast
 import json
 import sys
 from tqdm import tqdm
-from typing import List, Dict, Any
+from typing import List
 
 from transformers import (
     GPT2LMHeadModel,
     GPT2Tokenizer,
-    GPT2Config,
     Trainer,
     TrainingArguments,
     DataCollatorForLanguageModeling,
     TrainerCallback,
+    set_seed,
 )
 from datasets import Dataset
-import evaluate
-import warnings
-
-sys.path.append(str(Path(__file__).parent.parent))
-from models.tokenizer import ClimbPathTokenizer
 
 
 class ClimbPathDataset:
     """Dataset for converting climbing paths to endpoint conditioning format for GPT-2."""
     
-    def __init__(self, csv_path: str, climb_tokenizer: ClimbPathTokenizer):
+    def __init__(
+        self,
+        csv_path: str,
+        max_samples: int | None = None,
+    ):
         """
         Initialize dataset.
         
         Args:
             csv_path: Path to CSV file with climbing data
-            climb_tokenizer: ClimbPathTokenizer instance
+            max_samples: Optional deterministic row limit for smoke tests
         """
-        self.climb_tokenizer = climb_tokenizer
         self.df = pd.read_csv(csv_path)
+        if max_samples is not None:
+            self.df = self.df.head(max_samples).copy()
         print(f"Loaded {len(self.df)} climbing paths from {csv_path}")
     
     def path_to_text_with_endpoints(self, grade: str, holds: List[List[int]]) -> str:
@@ -88,7 +89,7 @@ class ClimbPathDataset:
         for _, row in tqdm(self.df.iterrows(), total=len(self.df), desc="Converting paths"):
             try:
                 grade = row['grade']
-                full_path = eval(row['full_path'])  # Convert string to list
+                full_path = ast.literal_eval(row['full_path'])
                 
                 if len(full_path) < 2:
                     skipped += 1
@@ -125,14 +126,6 @@ class SafetyCallback(TrainerCallback):
         return control
 
 
-def compute_metrics(eval_pred):
-    """Compute perplexity metric."""
-    predictions, labels = eval_pred
-    # Predictions are logits, compute loss manually
-    # For simplicity, we'll just return empty dict and rely on trainer's loss
-    return {}
-
-
 def main():
     parser = argparse.ArgumentParser(description='Fine-tune GPT-2 for climb path generation')
     
@@ -141,17 +134,16 @@ def main():
                         default='data_reordered/moonboard_train_quality_filtered.csv',
                         help='Path to training CSV (filtered for grade balance)')
     parser.add_argument('--val_csv', type=str, 
-                        default='data_reordered/moonboard_test_quality.csv',
+                        default='data_reordered/moonboard_val_quality.csv',
                         help='Path to validation CSV')
     
     # Model arguments
-    parser.add_argument('--model_name', type=str, default='distilgpt2',
-                        choices=['gpt2', 'distilgpt2'],
-                        help='Pre-trained model to use (default: distilgpt2)')
+    parser.add_argument('--model_name', type=str, default='distilbert/distilgpt2',
+                        help='Hugging Face base model ID')
     
     # Training arguments
-    parser.add_argument('--output_dir', type=str, default='checkpoints/distilgpt2_climb',
-                        help='Output directory for checkpoints')
+    parser.add_argument('--output_dir', type=str, required=True,
+                        help='Output directory for checkpoints (use a Modal Volume)')
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=8,
@@ -172,6 +164,14 @@ def main():
                         help='Evaluate every N steps')
     parser.add_argument('--logging_steps', type=int, default=100,
                         help='Log every N steps')
+    parser.add_argument('--seed', type=int, default=42,
+                        help='Random seed')
+    parser.add_argument('--max_train_samples', type=int, default=None,
+                        help='Optional row limit for a smoke run')
+    parser.add_argument('--max_val_samples', type=int, default=None,
+                        help='Optional validation row limit for a smoke run')
+    parser.add_argument('--resume_from_checkpoint', type=str, default=None,
+                        help='Checkpoint directory to resume from')
     
     # System arguments
     parser.add_argument('--device', type=str, 
@@ -181,23 +181,23 @@ def main():
                         help='Use mixed precision training (requires CUDA)')
     
     args = parser.parse_args()
+    set_seed(args.seed)
     
     # Initialize tokenizers
     print("Initializing tokenizers...")
-    climb_tokenizer = ClimbPathTokenizer()
     gpt2_tokenizer = GPT2Tokenizer.from_pretrained(args.model_name)
     
     # Add padding token if not present
     if gpt2_tokenizer.pad_token is None:
-        gpt2_tokenizer.pad_token = gpt2_tokenizer.eos_token
+        gpt2_tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
     
     # Load and prepare datasets
     print("\nPreparing training data...")
-    train_dataset = ClimbPathDataset(args.train_csv, climb_tokenizer)
+    train_dataset = ClimbPathDataset(args.train_csv, args.max_train_samples)
     train_texts = train_dataset.prepare_dataset()
     
     print("\nPreparing validation data...")
-    val_dataset = ClimbPathDataset(args.val_csv, climb_tokenizer)
+    val_dataset = ClimbPathDataset(args.val_csv, args.max_val_samples)
     val_texts = val_dataset.prepare_dataset()
     
     # Tokenize texts
@@ -205,31 +205,19 @@ def main():
     train_encodings = gpt2_tokenizer(
         train_texts,
         truncation=True,
-        padding='max_length',
         max_length=args.max_length,
-        return_tensors='pt'
     )
     
     val_encodings = gpt2_tokenizer(
         val_texts,
         truncation=True,
-        padding='max_length',
         max_length=args.max_length,
-        return_tensors='pt'
     )
     
     # Create HuggingFace datasets
-    train_hf_dataset = Dataset.from_dict({
-        'input_ids': train_encodings['input_ids'],
-        'attention_mask': train_encodings['attention_mask'],
-        'labels': train_encodings['input_ids'].clone(),
-    })
+    train_hf_dataset = Dataset.from_dict(train_encodings)
     
-    val_hf_dataset = Dataset.from_dict({
-        'input_ids': val_encodings['input_ids'],
-        'attention_mask': val_encodings['attention_mask'],
-        'labels': val_encodings['input_ids'].clone(),
-    })
+    val_hf_dataset = Dataset.from_dict(val_encodings)
     
     print(f"\nTrain dataset size: {len(train_hf_dataset)}")
     print(f"Val dataset size: {len(val_hf_dataset)}")
@@ -258,13 +246,15 @@ def main():
         eval_strategy='steps',
         save_strategy='steps',
         load_best_model_at_end=True,
-        metric_for_best_model='loss',
+        metric_for_best_model='eval_loss',
         greater_is_better=False,
         fp16=args.fp16 and torch.cuda.is_available(),
         report_to=['tensorboard'],
         save_total_limit=3,
         gradient_accumulation_steps=1,
         dataloader_num_workers=0,
+        seed=args.seed,
+        data_seed=args.seed,
     )
     
     # Data collator
@@ -280,7 +270,6 @@ def main():
         train_dataset=train_hf_dataset,
         eval_dataset=val_hf_dataset,
         data_collator=data_collator,
-        compute_metrics=compute_metrics,
         callbacks=[SafetyCallback()],
     )
     
@@ -295,7 +284,7 @@ def main():
     print("\n" + "="*60)
     print("Starting training...")
     print("="*60)
-    trainer.train()
+    trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
     
     # Save final model
     print("\nSaving final model...")
