@@ -342,6 +342,15 @@ scores 0.1462 mean middle-hold F1.
 
 **Exit gate:** a run is reproducible from its manifest; model passes validity gates and improves on baselines without excessive memorization.
 
+**Status (2026-10-11): implemented and evaluated; promotion gate not passed.**
+Atomic hold/grade tokens, completion-only loss, dynamic padding, deterministic
+grade sampling, checkpointing, manifests, and Modal train/evaluate entry points
+are complete. The selected three-epoch T4 run is 100% valid, parseable,
+duplicate-free, and endpoint-preserving with 99.22% novel routes. Its frozen
+middle-hold F1 is 0.1171, below nearest-route retrieval at 0.1462, so it has not
+replaced the Phase 0 deployment. Full run evidence and the Phase 3 decision are
+recorded in `PHASE2_RESULTS.md`.
+
 ### Phase 3: constrained inference API (2-3 days)
 
 - Generate multiple candidates, validate, rank, and return diagnostics.

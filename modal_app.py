@@ -6,8 +6,10 @@ base model does not require a Hugging Face secret.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -21,6 +23,7 @@ MODEL_VOLUME_ROOT = "/models"
 HF_CACHE_ROOT = "/cache/huggingface"
 BASELINE_NAME = "distilgpt2-baseline"
 BASELINE_DIR = f"{MODEL_VOLUME_ROOT}/{BASELINE_NAME}"
+PHASE2_ROOT = f"{MODEL_VOLUME_ROOT}/phase2"
 
 DEPENDENCIES = (
     "torch==2.10.0",
@@ -43,6 +46,11 @@ runtime_image = (
     .add_local_dir(
         PROJECT_ROOT / "data_reordered",
         f"{REMOTE_ROOT}/data_reordered",
+        copy=True,
+    )
+    .add_local_dir(
+        PROJECT_ROOT / "data_contract",
+        f"{REMOTE_ROOT}/data_contract",
         copy=True,
     )
 )
@@ -124,6 +132,158 @@ def train_baseline(
         "epochs": 1 if smoke else num_epochs,
         "smoke": smoke,
     }
+
+
+def _phase2_run_dir(run_name: str) -> str:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", run_name):
+        raise ValueError("run_name must be lowercase letters, numbers, and hyphens")
+    return f"{PHASE2_ROOT}/{run_name}"
+
+
+def _modal_environment() -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "HF_HOME": HF_CACHE_ROOT,
+            "TRANSFORMERS_CACHE": HF_CACHE_ROOT,
+            "TOKENIZERS_PARALLELISM": "false",
+            "PYTHONPATH": REMOTE_ROOT,
+        }
+    )
+    return env
+
+
+def _phase2_evaluation_command(run_dir: str) -> list[str]:
+    contract_dir = f"{REMOTE_ROOT}/data_contract/v1"
+    return [
+        sys.executable,
+        f"{REMOTE_ROOT}/backend/evaluation/evaluate_structured_model.py",
+        "--model-dir",
+        f"{run_dir}/final",
+        "--prompts",
+        f"{contract_dir}/frozen_evaluation.jsonl",
+        "--train",
+        f"{contract_dir}/train.jsonl",
+        "--board-holds",
+        f"{contract_dir}/board_holds.json",
+        "--predictions",
+        f"{run_dir}/frozen_predictions.jsonl",
+        "--metrics",
+        f"{run_dir}/frozen_metrics.json",
+        "--nearest-metrics",
+        f"{contract_dir}/nearest_route_metrics.json",
+    ]
+
+
+@app.function(
+    image=runtime_image,
+    gpu="T4",
+    timeout=2 * 60 * 60,
+    retries=1,
+    volumes={
+        MODEL_VOLUME_ROOT: model_volume,
+        HF_CACHE_ROOT: hf_cache_volume,
+    },
+)
+def train_phase2(
+    run_name: str = "structured-v1",
+    num_epochs: float = 3.0,
+    learning_rate: float = 1e-4,
+    max_train_samples: int = 0,
+    max_validation_samples: int = 0,
+    grade_sampling_strength: float = 0.0,
+) -> dict:
+    """Train and frozen-set evaluate the atomic-token DistilGPT-2 model."""
+
+    run_dir = _phase2_run_dir(run_name)
+    contract_dir = f"{REMOTE_ROOT}/data_contract/v1"
+    is_smoke = max_train_samples > 0
+    checkpoint_steps = "5" if is_smoke else "100"
+    command = [
+        sys.executable,
+        f"{REMOTE_ROOT}/backend/training/train_structured.py",
+        "--train",
+        f"{contract_dir}/train.jsonl",
+        "--validation",
+        f"{contract_dir}/validation.jsonl",
+        "--board-holds",
+        f"{contract_dir}/board_holds.json",
+        "--dataset-manifest",
+        f"{contract_dir}/manifest.json",
+        "--model-name",
+        "distilbert/distilgpt2",
+        "--output-dir",
+        run_dir,
+        "--num-epochs",
+        str(num_epochs),
+        "--learning-rate",
+        str(learning_rate),
+        "--batch-size",
+        "16",
+        "--eval-batch-size",
+        "32",
+        "--max-length",
+        "64",
+        "--warmup-ratio",
+        "0.05",
+        "--grade-sampling-strength",
+        str(grade_sampling_strength),
+        "--eval-steps",
+        checkpoint_steps,
+        "--save-steps",
+        checkpoint_steps,
+        "--logging-steps",
+        "5" if is_smoke else "20",
+        "--seed",
+        "42",
+        "--fp16",
+    ]
+    if max_train_samples > 0:
+        command.extend(["--max-train-samples", str(max_train_samples)])
+    if max_validation_samples > 0:
+        command.extend(["--max-validation-samples", str(max_validation_samples)])
+
+    env = _modal_environment()
+    subprocess.run(command, cwd=REMOTE_ROOT, env=env, check=True)
+    subprocess.run(
+        _phase2_evaluation_command(run_dir),
+        cwd=REMOTE_ROOT,
+        env=env,
+        check=True,
+    )
+    model_volume.commit()
+    hf_cache_volume.commit()
+    metrics_path = Path(f"{run_dir}/frozen_metrics.json")
+    return {
+        "run_name": run_name,
+        "model_dir": f"{run_dir}/final",
+        "training": json.loads(
+            Path(f"{run_dir}/train_metrics.json").read_text(encoding="utf-8")
+        ),
+        "evaluation": json.loads(metrics_path.read_text(encoding="utf-8")),
+    }
+
+
+@app.function(
+    image=runtime_image,
+    gpu="T4",
+    timeout=30 * 60,
+    volumes={MODEL_VOLUME_ROOT: model_volume},
+)
+def evaluate_phase2(run_name: str = "structured-v1") -> dict:
+    """Re-evaluate a saved Phase 2 run without retraining it."""
+
+    run_dir = _phase2_run_dir(run_name)
+    subprocess.run(
+        _phase2_evaluation_command(run_dir),
+        cwd=REMOTE_ROOT,
+        env=_modal_environment(),
+        check=True,
+    )
+    model_volume.commit()
+    return json.loads(
+        Path(f"{run_dir}/frozen_metrics.json").read_text(encoding="utf-8")
+    )
 
 
 @app.function(

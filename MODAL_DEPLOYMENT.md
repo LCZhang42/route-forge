@@ -37,6 +37,37 @@ Training uses a T4 GPU. Model output is persisted under
 `/models/distilgpt2-baseline/final` in the `climb-path-models` Modal Volume.
 The Hugging Face cache is stored separately in `climb-path-hf-cache`.
 
+## Phase 2 structured training
+
+Run a small end-to-end smoke job:
+
+```powershell
+python -X utf8 -m modal run modal_app.py::train_phase2 --run-name structured-smoke --num-epochs 1 --max-train-samples 256 --max-validation-samples 128
+```
+
+Run the measured three-epoch configuration:
+
+```powershell
+python -X utf8 -m modal run modal_app.py::train_phase2 --run-name structured-v1 --num-epochs 3 --learning-rate 0.0001
+```
+
+Optional grade-balanced sampling uses inverse grade frequency while keeping the
+epoch size unchanged:
+
+```powershell
+python -X utf8 -m modal run modal_app.py::train_phase2 --run-name structured-balanced-v1 --num-epochs 3 --learning-rate 0.0001 --grade-sampling-strength 1
+```
+
+Re-run frozen evaluation without retraining:
+
+```powershell
+python -X utf8 -m modal run modal_app.py::evaluate_phase2 --run-name structured-v1
+```
+
+Artifacts are stored under `/models/phase2/<run-name>` in the model Volume.
+See [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) for the measured comparison and the
+reason this checkpoint has not replaced the Phase 0 deployment.
+
 ## Development API
 
 ```powershell
@@ -60,6 +91,8 @@ https://lczhang42--climb-path-api.modal.run
 
 The endpoint is intentionally unauthenticated for browser access during Phase
 0. Add authentication and rate limiting before exposing it as a public product.
+The Phase 2 model is not deployed because it did not beat the frozen retrieval
+baseline; invoking a training function does not change this production URL.
 
 ## Local guarantees
 

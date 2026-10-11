@@ -7,6 +7,8 @@
 >
 > The canonical Phase 1 dataset, reproducible split builder, and benchmark are
 > documented in [`DATA_CONTRACT.md`](DATA_CONTRACT.md).
+> Phase 2 structured-training results, including the failed promotion gate, are
+> documented in [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md).
 
 AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
 
@@ -46,7 +48,7 @@ climb-path/
 ## 📊 Dataset
 
 **MoonBoard 2016** climbing problems dataset:
-- **6,610** quality-filtered training routes (balanced across grades)
+- **6,597** canonical Phase 1 training routes after deduplication
 - **Grades**: 6B+, 6C, 6C+, 7A, 7A+, 7B, 7B+, 7C, 7C+ (rare grades removed)
 - **Hold positions**: (x, y) coordinates on 11×18 grid
 - **Quality metrics**: Filtered by repeats and quality scores
@@ -141,6 +143,9 @@ python visualize_path.py
 | [`ENDPOINT_CONDITIONING.md`](ENDPOINT_CONDITIONING.md) | Endpoint conditioning explanation |
 | [`GRADE_BALANCE_GUIDE.md`](GRADE_BALANCE_GUIDE.md) | Grade balance and filtering guide |
 | [`QUALITY_FILTERING_GUIDE.md`](QUALITY_FILTERING_GUIDE.md) | Training with quality-filtered data |
+| [`DATA_CONTRACT.md`](DATA_CONTRACT.md) | Versioned Phase 1 data and frozen benchmark |
+| [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) | Structured Modal training results and promotion decision |
+| [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) | Modal jobs, storage, and deployment commands |
 
 ## 🏗️ Model Architecture
 
