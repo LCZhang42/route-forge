@@ -1,0 +1,126 @@
+{
+  "board_hold_count": 141,
+  "dataset_version": "v1",
+  "files": {
+    "board_holds.json": {
+      "bytes": 906,
+      "sha256": "3efec8e2cacb48770f72e47fe0467a818c67855d310425d10fc58743e0fed66e"
+    },
+    "frozen_evaluation.jsonl": {
+      "bytes": 40168,
+      "sha256": "f8633660343d2b5dd95068e5d82c52ce89637ef7c4a3225dc97f005bdec8f295"
+    },
+    "ood.jsonl": {
+      "bytes": 3767,
+      "sha256": "0f40c8455997441122f027228d614cb14594b74c29fa117cafd63aab4e924298"
+    },
+    "test.jsonl": {
+      "bytes": 396801,
+      "sha256": "8e69d55176fe707418fc749bbe3bf5e7a5776f08c6e6e801446449788dc169c2"
+    },
+    "train.jsonl": {
+      "bytes": 3174783,
+      "sha256": "071877aeffdc8a0bd0d9a46e1d92b3eb20ee0e1d2efc8a4a4a0b615b7ff20c7f"
+    },
+    "validation.jsonl": {
+      "bytes": 396854,
+      "sha256": "ee317edd6a4a0997ffd75c9d8e8a52591df43cc44ac48cc00d4df0130c5a6b7c"
+    }
+  },
+  "frozen_evaluation_rows": 128,
+  "invariants": {
+    "cross_split_fingerprint_overlap": 0,
+    "multi_endpoint_fields_preserved": true,
+    "unknown_hold_count": 0
+  },
+  "ood_grades": [
+    "6B",
+    "8A"
+  ],
+  "schema_version": "climb-path-route/v1",
+  "seed": 42,
+  "source": {
+    "canonical_routes": 8255,
+    "duplicate_groups": 12,
+    "duplicate_rows_removed": 12,
+    "grade_conflict_groups": 6,
+    "input_rows": 8267,
+    "inputs": {
+      "moonboard_test_quality.csv": {
+        "rows": 829,
+        "sha256": "3078849e5a998bf4ca32e6540cd4b875ca8a15e229df572bde77114ec933edd9"
+      },
+      "moonboard_train_quality_filtered.csv": {
+        "rows": 6610,
+        "sha256": "45ca68abb678d16b2ddc85c6e2c4a2423e2ce83eea9cef32a4369a79d631a85f"
+      },
+      "moonboard_val_quality.csv": {
+        "rows": 828,
+        "sha256": "5de7fa145c0587760f276836a02da90b29959f6b1d692a754a031515026ef802"
+      }
+    }
+  },
+  "split_strategy": "deduplicate globally, then deterministic grade-stratified 80/10/10",
+  "splits": {
+    "ood": {
+      "grade_counts": {
+        "6B": 2,
+        "8A": 6
+      },
+      "rows": 8
+    },
+    "test": {
+      "grade_counts": {
+        "6B+": 404,
+        "6C": 131,
+        "6C+": 83,
+        "7A": 75,
+        "7A+": 44,
+        "7B": 38,
+        "7B+": 26,
+        "7C": 18,
+        "7C+": 6
+      },
+      "rows": 825
+    },
+    "train": {
+      "grade_counts": {
+        "6B+": 3231,
+        "6C": 1045,
+        "6C+": 667,
+        "7A": 599,
+        "7A+": 354,
+        "7B": 304,
+        "7B+": 204,
+        "7C": 141,
+        "7C+": 52
+      },
+      "rows": 6597
+    },
+    "validation": {
+      "grade_counts": {
+        "6B+": 404,
+        "6C": 131,
+        "6C+": 83,
+        "7A": 75,
+        "7A+": 44,
+        "7B": 38,
+        "7B+": 26,
+        "7C": 18,
+        "7C+": 6
+      },
+      "rows": 825
+    }
+  },
+  "supported_grades": [
+    "6B+",
+    "6C",
+    "6C+",
+    "7A",
+    "7A+",
+    "7B",
+    "7B+",
+    "7C",
+    "7C+"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "exact_middle_match_rate": 0.0078125,
+  "mean_endpoint_distance": 1.390625,
+  "mean_middle_hold_f1": 0.1462081602017264,
+  "prompts": 128,
+  "same_grade_rate": 1.0
+}

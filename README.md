@@ -4,6 +4,9 @@
 > weights are not stored or executed locally. See
 > [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) for the smoke-train, training,
 > and deployment commands.
+>
+> The canonical Phase 1 dataset, reproducible split builder, and benchmark are
+> documented in [`DATA_CONTRACT.md`](DATA_CONTRACT.md).
 
 AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
 
@@ -14,7 +17,7 @@ AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT
 - ✅ **Grade-Conditioned Generation** - Generate routes for specific difficulty levels (6B+ to 7C+)
 - ✅ **Quality Filtering** - Train on high-quality, balanced routes for better outputs
 - ✅ **Interactive Web Interface** - Gradio-based UI for easy route generation and visualization
-- ✅ **CPU & GPU Training** - Works on CPU (2-3 hours) or GPU (20 minutes)
+- ✅ **Serverless GPU Training** - Reproducible Modal T4 jobs with persistent model storage
 
 ## 🖼️ Gradio Web Interface
 

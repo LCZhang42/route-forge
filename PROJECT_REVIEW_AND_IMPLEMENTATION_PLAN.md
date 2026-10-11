@@ -324,6 +324,14 @@ remains in the later phases below.
 
 **Exit gate:** zero route-fingerprint overlap across splits; all coordinates are known board holds; dataset manifest is reproducible from one command.
 
+**Status (2026-10-11): complete.** The deterministic v1 contract contains
+6,597 train, 825 validation, 825 test, and 8 OOD routes using 141 canonical
+`A1`-style hold IDs. Twelve duplicate rows are removed before splitting, six
+conflicting-grade groups are recorded and resolved deterministically, and the
+manifest verifies zero cross-split fingerprint overlap. A frozen 128-prompt
+evaluation set and nearest-route retrieval baseline are included; the latter
+scores 0.1462 mean middle-hold F1.
+
 ### Phase 2: train and compare on Modal (2-4 days)
 
 - Implement atomic domain tokens, dynamic padding, prompt masking, dedicated PAD/EOS, seeds, and checkpoint resume.
