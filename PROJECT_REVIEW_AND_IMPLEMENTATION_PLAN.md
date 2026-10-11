@@ -360,6 +360,14 @@ recorded in `PHASE2_RESULTS.md`.
 
 **Exit gate:** 95%+ of normal requests return at least one valid candidate within the agreed latency budget; no raw secret or internal traceback reaches the client.
 
+**Status (11 October 2026): complete for development.** The frozen suite reached
+100% request success and 100% returned-candidate validity, with 167.7 ms mean
+warm service latency. A separate Modal endpoint is deployed with constrained
+multi-candidate generation, deterministic seeds, diagnostics, readiness checks,
+rate/candidate limits, structured logs, and sanitized errors. Retrieval remains
+the conservative first candidate because the learned ranker did not beat it;
+model candidates are exposed as alternatives. See `PHASE3_RESULTS.md`.
+
 ### Phase 4: polished React web app (3-5 days)
 
 - Calibrate the board overlay and implement responsive, accessible endpoint selection.

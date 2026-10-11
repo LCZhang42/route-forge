@@ -24,6 +24,8 @@ HF_CACHE_ROOT = "/cache/huggingface"
 BASELINE_NAME = "distilgpt2-baseline"
 BASELINE_DIR = f"{MODEL_VOLUME_ROOT}/{BASELINE_NAME}"
 PHASE2_ROOT = f"{MODEL_VOLUME_ROOT}/phase2"
+PHASE3_MODEL_VERSION = "structured-v1"
+PHASE3_MODEL_DIR = f"{PHASE2_ROOT}/{PHASE3_MODEL_VERSION}/final"
 
 DEPENDENCIES = (
     "torch==2.10.0",
@@ -288,6 +290,59 @@ def evaluate_phase2(run_name: str = "structured-v1") -> dict:
 
 @app.function(
     image=runtime_image,
+    gpu="T4",
+    timeout=30 * 60,
+    volumes={MODEL_VOLUME_ROOT: model_volume},
+)
+def evaluate_phase3(
+    model_version: str = PHASE3_MODEL_VERSION,
+    evaluation_split: str = "frozen",
+) -> dict:
+    """Evaluate constrained multi-candidate inference on the frozen suite."""
+
+    if evaluation_split not in {"frozen", "validation"}:
+        raise ValueError("evaluation_split must be 'frozen' or 'validation'")
+    run_dir = _phase2_run_dir(model_version)
+    output_dir = f"{MODEL_VOLUME_ROOT}/phase3/{model_version}"
+    contract_dir = f"{REMOTE_ROOT}/data_contract/v1"
+    prompts_file = (
+        "frozen_evaluation.jsonl"
+        if evaluation_split == "frozen"
+        else "validation.jsonl"
+    )
+    command = [
+        sys.executable,
+        f"{REMOTE_ROOT}/backend/evaluation/evaluate_phase3_service.py",
+        "--model-dir",
+        f"{run_dir}/final",
+        "--train",
+        f"{contract_dir}/train.jsonl",
+        "--board-holds",
+        f"{contract_dir}/board_holds.json",
+        "--manifest",
+        f"{contract_dir}/manifest.json",
+        "--prompts",
+        f"{contract_dir}/{prompts_file}",
+        "--nearest-metrics",
+        f"{contract_dir}/nearest_route_metrics.json",
+        "--predictions",
+        f"{output_dir}/{evaluation_split}_predictions.jsonl",
+        "--metrics",
+        f"{output_dir}/{evaluation_split}_metrics.json",
+        "--model-version",
+        model_version,
+    ]
+    subprocess.run(command, cwd=REMOTE_ROOT, env=_modal_environment(), check=True)
+    model_volume.commit()
+    return json.loads(
+        Path(f"{output_dir}/{evaluation_split}_metrics.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+
+@app.function(
+    image=runtime_image,
     cpu=4,
     memory=8192,
     timeout=5 * 60,
@@ -306,3 +361,24 @@ def api():
     from backend.api.server import create_app
 
     return create_app()
+
+
+@app.function(
+    image=runtime_image,
+    gpu="T4",
+    memory=8192,
+    timeout=5 * 60,
+    scaledown_window=5 * 60,
+    volumes={MODEL_VOLUME_ROOT: model_volume},
+)
+@modal.asgi_app()
+def phase3_api():
+    """Serve the constrained Phase 3 API without changing the Phase 0 endpoint."""
+
+    sys.path.insert(0, REMOTE_ROOT)
+    os.environ["CLIMB_PHASE3_MODEL_DIR"] = PHASE3_MODEL_DIR
+    os.environ["CLIMB_MODEL_VERSION"] = PHASE3_MODEL_VERSION
+    os.environ["CLIMB_CONTRACT_DIR"] = f"{REMOTE_ROOT}/data_contract/v1"
+    from backend.api.phase3_server import create_phase3_app
+
+    return create_phase3_app()

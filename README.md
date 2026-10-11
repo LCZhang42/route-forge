@@ -9,6 +9,8 @@
 > documented in [`DATA_CONTRACT.md`](DATA_CONTRACT.md).
 > Phase 2 structured-training results, including the failed promotion gate, are
 > documented in [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md).
+> The constrained Phase 3 API and frozen evaluation are documented in
+> [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md).
 
 AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
 
@@ -145,6 +147,7 @@ python visualize_path.py
 | [`QUALITY_FILTERING_GUIDE.md`](QUALITY_FILTERING_GUIDE.md) | Training with quality-filtered data |
 | [`DATA_CONTRACT.md`](DATA_CONTRACT.md) | Versioned Phase 1 data and frozen benchmark |
 | [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) | Structured Modal training results and promotion decision |
+| [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md) | Constrained inference API, F1 interpretation, and deployment results |
 | [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) | Modal jobs, storage, and deployment commands |
 
 ## 🏗️ Model Architecture

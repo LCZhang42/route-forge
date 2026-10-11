@@ -94,6 +94,34 @@ The endpoint is intentionally unauthenticated for browser access during Phase
 The Phase 2 model is not deployed because it did not beat the frozen retrieval
 baseline; invoking a training function does not change this production URL.
 
+## Phase 3 constrained API
+
+Re-evaluate the saved structured model through the complete Phase 3 service:
+
+```powershell
+python -X utf8 -m modal run modal_app.py::evaluate_phase3 --model-version structured-v1 --evaluation-split frozen
+```
+
+Deploying `modal_app.py` creates the Phase 3 endpoint separately from Phase 0:
+
+```text
+https://lczhang42--climb-path-phase3-api.modal.run
+```
+
+Its T4 container is configured with a five-minute scale-down window. After five
+idle minutes, Modal may scale inference compute to zero; the next request must
+pay the GPU/model cold-start latency. Persistent Volume storage remains allocated.
+The measured first deployed request took 74.6 seconds, while warm service
+generation averaged 167.7 ms. See [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md) for
+quality metrics and the retrieval-first selection decision.
+
+To run the opt-in deployed contract smoke test:
+
+```powershell
+$env:CLIMB_PHASE3_API_URL = "https://lczhang42--climb-path-phase3-api.modal.run"
+python -m unittest tests.test_phase3_deployed -v
+```
+
 ## Local guarantees
 
 - Importing the API or running tests never downloads model weights.
@@ -101,3 +129,4 @@ baseline; invoking a training function does not change this production URL.
   mounted Modal Volume.
 - `checkpoints/` is ignored and the old project-local artifacts were removed.
 - The local CLI helper calls the deployed API through `CLIMB_API_URL`.
+- Phase 3 loads `/models/phase2/structured-v1/final` only inside Modal.
