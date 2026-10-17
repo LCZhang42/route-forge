@@ -14,8 +14,9 @@ https://lczhang42--climb-path-phase3-api.modal.run
 
 ## User experience
 
-- Fetches supported grades, 141 board holds, model/data versions, and limits
-  from `GET /api/v1/model`; grades are not duplicated in frontend code.
+- Fetches supported grades, model/data versions, limits, and the physical
+  140-handhold runtime catalog from `GET /api/v1/model`; grades are not
+  duplicated in frontend code.
 - Provides one- or two-hold start and finish selection using calibrated board
   controls or native keyboard-accessible selects.
 - Includes three route presets and reproducible seed/variety controls.
@@ -28,8 +29,12 @@ https://lczhang42--climb-path-phase3-api.modal.run
   holds as transparent rings. The wall deliberately omits connecting lines and
   sequence numbers so it identifies the problem without prescribing beta.
 - Maps the legacy screenshot/LED row values to the physical hold one row above,
-  removes the extra white marker halo, and limits endpoint selection to the 25
-  observed 2016 start positions and nine valid top-row finish positions.
+  removes the extra white marker halo, and limits endpoint selection to the 24
+  verified 2016 start positions and nine valid top-row finish positions.
+- Excludes legacy internal `A5` (displayed as physical `A6`) at both the API and
+  UI boundary. It appeared in only one malformed three-start source route and
+  does not correspond to an installed 2016 handhold; its tokenizer entry is
+  retained only so the existing checkpoint remains loadable.
 - Stores only grade, endpoint labels, and seed in the URL for shareable,
   non-secret setup state.
 

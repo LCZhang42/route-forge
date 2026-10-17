@@ -21,7 +21,7 @@ const ROUTE_PRESETS = [
     name: 'Wide launch',
     detail: 'Wide start · longer movement',
     grade: '7B',
-    startHolds: ['A5', 'K5'],
+    startHolds: ['B5', 'K5'],
     endHolds: ['H17'],
   },
 ]

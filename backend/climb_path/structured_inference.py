@@ -21,6 +21,13 @@ from .schema import Hold, Route, SUPPORTED_GRADES
 from .tokens import EOS_TOKEN, hold_token, prompt_tokens
 
 
+# Internal A5 displays as physical A6 because the source coordinates identify
+# the LED below each handhold. The 2016 board has no handhold there; this token
+# came from one malformed three-start source route. Retain it in the tokenizer
+# vocabulary for checkpoint compatibility, but never expose or generate it.
+NON_PHYSICAL_2016_HOLDS = frozenset({"A5"})
+
+
 @dataclass(frozen=True)
 class GeneratedMiddle:
     hold_labels: tuple[str, ...]
@@ -190,8 +197,16 @@ class Phase3RouteService:
         data_version: str,
     ) -> None:
         self.generator = generator
-        self.training_records = tuple(training_records)
-        self.valid_hold_labels = set(board_holds)
+        self.training_records = tuple(
+            record
+            for record in training_records
+            if not NON_PHYSICAL_2016_HOLDS.intersection(
+                label
+                for role in ("start_holds", "middle_holds", "end_holds")
+                for label in record[role]
+            )
+        )
+        self.valid_hold_labels = set(board_holds) - NON_PHYSICAL_2016_HOLDS
         self.valid_start_labels = {
             label
             for record in self.training_records
@@ -239,6 +254,7 @@ class Phase3RouteService:
             "data_version": self.data_version,
             "supported_grades": list(SUPPORTED_GRADES),
             "board": "MoonBoard 2016",
+            "layout_version": "moonboard-2016-physical-v1",
             "board_holds": sorted(self.valid_hold_labels),
             "endpoint_holds": {
                 "start": sorted(self.valid_start_labels),

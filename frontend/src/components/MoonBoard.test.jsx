@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MoonBoard from './MoonBoard'
-import { displayHoldLabel, fallbackEndpointHolds, holdPosition } from './boardGeometry'
+import {
+  displayHoldLabel,
+  fallbackEndpointHolds,
+  holdPosition,
+  normalizeEndpointHolds,
+  physicalBoardHolds,
+} from './boardGeometry'
 
 describe('MoonBoard', () => {
   it('maps labels to the calibrated image grid', () => {
@@ -12,11 +18,16 @@ describe('MoonBoard', () => {
     expect(displayHoldLabel('A4')).toBe('A5')
   })
 
-  it('derives endpoint choices from observed lower holds and the finish row', () => {
-    expect(fallbackEndpointHolds(['A4', 'D8', 'G17'])).toEqual({
+  it('derives endpoint choices without the phantom physical A6 coordinate', () => {
+    expect(fallbackEndpointHolds(['A4', 'A5', 'D8', 'G17'])).toEqual({
       start: ['A4'],
       end: ['G17'],
     })
+    expect(physicalBoardHolds(['A4', 'A5', 'G17'])).toEqual(['A4', 'G17'])
+    expect(normalizeEndpointHolds(
+      { start: ['A4', 'A5'], end: ['G17'] },
+      ['A4', 'A5', 'G17'],
+    )).toEqual({ start: ['A4'], end: ['G17'] })
   })
 
   it('exposes every available hold as a keyboard-accessible button', async () => {

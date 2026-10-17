@@ -11,6 +11,12 @@ const CALIBRATION = {
 // is retrained, but always present and draw the official physical hold label.
 export const DISPLAY_ROW_OFFSET = 1
 
+// The legacy export contains one phantom coordinate: internal A5, displayed as
+// physical A6. It occurs in a single malformed three-start route, but the 2016
+// setup has no handhold at that grid position. Keep the model token for
+// checkpoint compatibility and exclude it at the UI/API boundary.
+export const NON_PHYSICAL_2016_HOLDS = new Set(['A5'])
+
 export function parseHoldLabel(label) {
   return {
     x: label.charCodeAt(0) - 65,
@@ -32,9 +38,24 @@ export function displayHoldLabel(label) {
   return `${String.fromCharCode(65 + x)}${y + DISPLAY_ROW_OFFSET}`
 }
 
+export function physicalBoardHolds(boardHolds) {
+  return boardHolds.filter((hold) => !NON_PHYSICAL_2016_HOLDS.has(hold))
+}
+
 export function fallbackEndpointHolds(boardHolds) {
+  const physicalHolds = physicalBoardHolds(boardHolds)
   return {
-    start: boardHolds.filter((hold) => parseHoldLabel(hold).y <= 5),
-    end: boardHolds.filter((hold) => parseHoldLabel(hold).y === 17),
+    start: physicalHolds.filter((hold) => parseHoldLabel(hold).y <= 5),
+    end: physicalHolds.filter((hold) => parseHoldLabel(hold).y === 17),
+  }
+}
+
+
+export function normalizeEndpointHolds(endpointHolds, boardHolds) {
+  const fallback = fallbackEndpointHolds(boardHolds)
+  const advertised = endpointHolds || fallback
+  return {
+    start: physicalBoardHolds(advertised.start || fallback.start),
+    end: physicalBoardHolds(advertised.end || fallback.end),
   }
 }

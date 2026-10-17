@@ -55,6 +55,8 @@ runtime_image = (
         f"{REMOTE_ROOT}/data_contract",
         copy=True,
     )
+    # Bump when a runtime-only correction must replace every warm web container.
+    .env({"CLIMB_SOURCE_REVISION": "moonboard-2016-layout-v2"})
 )
 
 app = modal.App(APP_NAME)

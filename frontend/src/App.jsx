@@ -3,7 +3,11 @@ import { Activity, Check, Copy, Mountain, RefreshCw } from 'lucide-react'
 import MoonBoard from './components/MoonBoard'
 import Controls from './components/Controls'
 import CandidateList from './components/CandidateList'
-import { displayHoldLabel, fallbackEndpointHolds } from './components/boardGeometry'
+import {
+  displayHoldLabel,
+  normalizeEndpointHolds,
+  physicalBoardHolds,
+} from './components/boardGeometry'
 import {
   generateRoutes,
   getApiErrorMessage,
@@ -49,8 +53,12 @@ function App() {
     getModelCapabilities()
       .then((model) => {
         if (!active) return
-        const endpointHolds = model.endpoint_holds || fallbackEndpointHolds(model.board_holds)
-        const normalizedModel = { ...model, endpoint_holds: endpointHolds }
+        const endpointHolds = normalizeEndpointHolds(model.endpoint_holds, model.board_holds)
+        const normalizedModel = {
+          ...model,
+          board_holds: physicalBoardHolds(model.board_holds),
+          endpoint_holds: endpointHolds,
+        }
         setCapabilities(normalizedModel)
         setServiceState('ready')
         setServiceMessage('Model ready')

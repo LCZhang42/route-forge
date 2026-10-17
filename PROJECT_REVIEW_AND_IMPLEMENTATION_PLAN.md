@@ -125,7 +125,8 @@ Keep DistilGPT-2 for the first measured baseline, but use atomic domain tokens a
 Generation should produce several candidates and pass them through hard validation:
 
 1. Preserve requested start and end holds exactly.
-2. Permit only the 141 observed MoonBoard 2016 holds.
+2. Permit only the 140 physical MoonBoard 2016 handholds. The legacy model
+   vocabulary retains one phantom coordinate solely for checkpoint compatibility.
 3. Prevent duplicate holds unless a deliberate match is represented.
 4. Enforce grade-conditioned hold-count limits.
 5. Reject routes with severe reachability violations.
@@ -333,8 +334,10 @@ remains in the later phases below.
 **Exit gate:** zero route-fingerprint overlap across splits; all coordinates are known board holds; dataset manifest is reproducible from one command.
 
 **Status (2026-10-11): complete.** The deterministic v1 contract contains
-6,597 train, 825 validation, 825 test, and 8 OOD routes using 141 canonical
-`A1`-style hold IDs. Twelve duplicate rows are removed before splitting, six
+6,597 train, 825 validation, 825 test, and 8 OOD routes using 141 legacy
+`A1`-style token IDs. Runtime validation filters the single phantom `A5` token
+(physical `A6`) and its malformed three-start record, leaving the official 140
+handhold layout. Twelve duplicate rows are removed before splitting, six
 conflicting-grade groups are recorded and resolved deterministically, and the
 manifest verifies zero cross-split fingerprint overlap. A frozen 128-prompt
 evaluation set and nearest-route retrieval baseline are included; the latter

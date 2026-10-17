@@ -62,7 +62,12 @@ class Phase3ConstraintTests(unittest.TestCase):
         )
 
         metadata = service.metadata()
+        self.assertEqual(metadata["layout_version"], "moonboard-2016-physical-v1")
         self.assertIn("F4", metadata["endpoint_holds"]["start"])
+        self.assertNotIn("A5", metadata["board_holds"])
+        self.assertNotIn("A5", metadata["endpoint_holds"]["start"])
+        self.assertEqual(len(metadata["board_holds"]), 140)
+        self.assertEqual(len(metadata["endpoint_holds"]["start"]), 24)
         self.assertEqual(
             {label[1:] for label in metadata["endpoint_holds"]["end"]}, {"17"}
         )
@@ -81,6 +86,17 @@ class Phase3ConstraintTests(unittest.TestCase):
             service.generate(
                 grade="7A",
                 start_holds=["D8"],
+                end_holds=["G17"],
+                candidate_count=1,
+                temperature=0.8,
+                top_p=0.95,
+                seed=42,
+            )
+
+        with self.assertRaisesRegex(ValueError, "exist on the MoonBoard"):
+            service.generate(
+                grade="7A",
+                start_holds=["A5"],
                 end_holds=["G17"],
                 candidate_count=1,
                 temperature=0.8,
