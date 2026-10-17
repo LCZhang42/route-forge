@@ -1,4 +1,5 @@
 import { AlertTriangle, Check, Route } from 'lucide-react'
+import { displayHoldLabel } from './boardGeometry'
 
 const sourceLabel = (source) => source === 'retrieval_fallback'
   ? 'Conservative match'
@@ -41,12 +42,12 @@ function CandidateList({ candidates, selectedIndex, onSelect }) {
                   </div>
                   {selected && <Check className="selected-check" size={18} aria-label="Selected" />}
                 </div>
-                <div className="route-hold-groups" aria-label={`Included holds: starts ${candidate.start_holds.join(', ')}; other holds ${candidate.middle_holds.join(', ')}; finishes ${candidate.end_holds.join(', ')}`}>
-                  <span><i className="hold-key start" />Start {candidate.start_holds.join(', ')}</span>
+                <div className="route-hold-groups" aria-label={`Included holds: starts ${candidate.start_holds.map(displayHoldLabel).join(', ')}; other holds ${candidate.middle_holds.map(displayHoldLabel).join(', ')}; finishes ${candidate.end_holds.map(displayHoldLabel).join(', ')}`}>
+                  <span><i className="hold-key start" />Start {candidate.start_holds.map(displayHoldLabel).join(', ')}</span>
                   {candidate.middle_holds.length > 0 && (
-                    <span><i className="hold-key move" />Holds {candidate.middle_holds.join(', ')}</span>
+                    <span><i className="hold-key move" />Holds {candidate.middle_holds.map(displayHoldLabel).join(', ')}</span>
                   )}
-                  <span><i className="hold-key finish" />Finish {candidate.end_holds.join(', ')}</span>
+                  <span><i className="hold-key finish" />Finish {candidate.end_holds.map(displayHoldLabel).join(', ')}</span>
                 </div>
                 <div className="candidate-metrics">
                   <span>Longest move <b>{candidate.diagnostics.maximum_move_distance.toFixed(1)}</b></span>

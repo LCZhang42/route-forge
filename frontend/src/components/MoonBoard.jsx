@@ -1,16 +1,18 @@
-import { holdPosition } from './boardGeometry'
+import { displayHoldLabel, holdPosition } from './boardGeometry'
 
 function MoonBoard({
   boardHolds,
   candidate,
   startHolds,
   endHolds,
+  selectableHolds,
   selectionMode,
   onHoldSelect,
 }) {
   const routeHolds = new Set(candidate?.holds || [])
   const routeStarts = new Set(candidate?.start_holds || [])
   const routeFinishes = new Set(candidate?.end_holds || [])
+  const selectable = new Set(selectableHolds)
 
   return (
     <section className="panel board-panel" aria-labelledby="board-title">
@@ -39,6 +41,8 @@ function MoonBoard({
             const isStart = startHolds.includes(hold)
             const isEnd = endHolds.includes(hold)
             const isRoute = routeHolds.has(hold)
+            const canSelect = selectable.has(hold)
+            const displayLabel = displayHoldLabel(hold)
             const routeRole = routeStarts.has(hold)
               ? 'route start'
               : routeFinishes.has(hold)
@@ -58,8 +62,9 @@ function MoonBoard({
                 type="button"
                 className={classes}
                 style={{ left: `${position.left}%`, top: `${position.top}%` }}
-                aria-label={`${hold}${routeRole ? `, ${routeRole}` : ''}${isStart ? ', selected start' : ''}${isEnd ? ', selected finish' : ''}. Set as ${selectionMode}.`}
+                aria-label={`${displayLabel}${routeRole ? `, ${routeRole}` : ''}${isStart ? ', selected start' : ''}${isEnd ? ', selected finish' : ''}. ${canSelect ? `Set as ${selectionMode}.` : `Not available as ${selectionMode}.`}`}
                 aria-pressed={selectionMode === 'start' ? isStart : isEnd}
+                disabled={!canSelect}
                 tabIndex={isStart || isEnd ? 0 : -1}
                 onClick={() => onHoldSelect(hold)}
               />
@@ -69,7 +74,7 @@ function MoonBoard({
       </div>
 
       <div className="board-footer">
-        <span>{boardHolds.length} available holds</span>
+        <span>{selectableHolds.length} available {selectionMode} positions</span>
         <span>{candidate ? `${candidate.holds.length} holds in selected route` : 'Select endpoints to begin'}</span>
       </div>
     </section>

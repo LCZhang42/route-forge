@@ -27,6 +27,9 @@ https://lczhang42--climb-path-phase3-api.modal.run
 - Lets users switch the active candidate and see start, intermediate, and finish
   holds as transparent rings. The wall deliberately omits connecting lines and
   sequence numbers so it identifies the problem without prescribing beta.
+- Maps the legacy screenshot/LED row values to the physical hold one row above,
+  removes the extra white marker halo, and limits endpoint selection to the 25
+  observed 2016 start positions and nine valid top-row finish positions.
 - Stores only grade, endpoint labels, and seed in the URL for shareable,
   non-secret setup state.
 

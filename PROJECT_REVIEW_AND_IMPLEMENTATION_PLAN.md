@@ -253,6 +253,12 @@ Validate coordinates and min/max relationships server-side. Configure CORS with 
 - Use transparent, color-coded rings for starts, intermediate holds, and finishes.
   Preserve role text in the legend, candidate details, and accessible labels rather
   than drawing sequence numbers or connecting lines over the wall.
+- Treat the current model's row number as a legacy LED/screenshot index. Add one
+  when displaying or positioning the physical hold, and keep that translation at
+  the API boundary until a future model can be retrained with official hold labels.
+- Offer only role-valid endpoints: observed lower-board start holds and installed
+  top-row finish holds. The official rules require top-row finishes but do not
+  define one universal fixed list of start holds.
 - Support path toggling and candidate comparison without redrawing the base bitmap each time.
 
 ### Feedback and trust

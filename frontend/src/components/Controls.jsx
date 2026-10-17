@@ -1,5 +1,6 @@
 import { Flag, MapPin, Sparkles } from 'lucide-react'
 import GradeSelector from './GradeSelector'
+import { displayHoldLabel } from './boardGeometry'
 
 const ROUTE_PRESETS = [
   {
@@ -55,7 +56,9 @@ function HoldSelect({ id, label, values, boardHolds, excluded, onChange }) {
           required
         >
           <option value="" disabled>Select a hold</option>
-          {optionsFor(0).map((hold) => <option key={hold}>{hold}</option>)}
+          {optionsFor(0).map((hold) => (
+            <option key={hold} value={hold}>{displayHoldLabel(hold)}</option>
+          ))}
         </select>
         <select
           aria-label={`Optional second ${label.toLowerCase()}`}
@@ -63,7 +66,9 @@ function HoldSelect({ id, label, values, boardHolds, excluded, onChange }) {
           onChange={(event) => update(1, event.target.value)}
         >
           <option value="">No second hold</option>
-          {optionsFor(1).map((hold) => <option key={hold}>{hold}</option>)}
+          {optionsFor(1).map((hold) => (
+            <option key={hold} value={hold}>{displayHoldLabel(hold)}</option>
+          ))}
         </select>
       </div>
     </div>
@@ -140,7 +145,7 @@ function Controls({
         </button>
       </div>
       <p className="mode-help" id="board-instructions">
-        Choose a mode, then click any available hold on the board. Selecting a third hold replaces the second.
+        Choose a mode, then select an available ring on the board. Starts use observed 2016 start positions; finishes use top-row holds.
       </p>
 
       <div className="endpoint-fields">
@@ -148,7 +153,7 @@ function Controls({
           id="start"
           label="Start holds"
           values={startHolds}
-          boardHolds={capabilities.board_holds}
+          boardHolds={capabilities.endpoint_holds.start}
           excluded={endHolds}
           onChange={onStartChange}
         />
@@ -156,7 +161,7 @@ function Controls({
           id="finish"
           label="Finish holds"
           values={endHolds}
-          boardHolds={capabilities.board_holds}
+          boardHolds={capabilities.endpoint_holds.end}
           excluded={startHolds}
           onChange={onEndChange}
         />

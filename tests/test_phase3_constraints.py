@@ -52,6 +52,42 @@ class Phase3ConstraintTests(unittest.TestCase):
             )
             self.assertLessEqual(profile.soft_move_limit, profile.hard_move_limit)
 
+    def test_metadata_exposes_role_specific_endpoint_catalogs(self):
+        service = Phase3RouteService(
+            generator=FakeGenerator([]),
+            training_records=self.training_records,
+            board_holds=self.board_holds,
+            model_version="test-model",
+            data_version="test-data",
+        )
+
+        metadata = service.metadata()
+        self.assertIn("F4", metadata["endpoint_holds"]["start"])
+        self.assertEqual(
+            {label[1:] for label in metadata["endpoint_holds"]["end"]}, {"17"}
+        )
+        self.assertEqual(metadata["display_row_offset"], 1)
+
+    def test_service_rejects_holds_in_the_wrong_endpoint_role(self):
+        service = Phase3RouteService(
+            generator=FakeGenerator([]),
+            training_records=self.training_records,
+            board_holds=self.board_holds,
+            model_version="test-model",
+            data_version="test-data",
+        )
+
+        with self.assertRaisesRegex(ValueError, "start positions"):
+            service.generate(
+                grade="7A",
+                start_holds=["D8"],
+                end_holds=["G17"],
+                candidate_count=1,
+                temperature=0.8,
+                top_p=0.95,
+                seed=42,
+            )
+
     def test_diagnostics_reject_severe_moves(self):
         route = Route(
             grade="7A",

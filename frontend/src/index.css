@@ -536,9 +536,7 @@ input[type="range"] {
   opacity: 1;
   border: 3px solid;
   background: transparent;
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.94),
-    0 4px 12px rgba(0, 0, 0, 0.48);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.48);
 }
 
 .board-hold.is-start { border-color: #24954a; }
@@ -552,6 +550,10 @@ input[type="range"] {
 .board-hold.is-finish:hover,
 .board-hold.is-finish:focus-visible {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.board-hold:disabled {
+  cursor: default;
 }
 
 .board-footer {

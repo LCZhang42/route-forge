@@ -3,6 +3,7 @@ import { Activity, Check, Copy, Mountain, RefreshCw } from 'lucide-react'
 import MoonBoard from './components/MoonBoard'
 import Controls from './components/Controls'
 import CandidateList from './components/CandidateList'
+import { displayHoldLabel, fallbackEndpointHolds } from './components/boardGeometry'
 import {
   generateRoutes,
   getApiErrorMessage,
@@ -48,24 +49,27 @@ function App() {
     getModelCapabilities()
       .then((model) => {
         if (!active) return
-        setCapabilities(model)
+        const endpointHolds = model.endpoint_holds || fallbackEndpointHolds(model.board_holds)
+        const normalizedModel = { ...model, endpoint_holds: endpointHolds }
+        setCapabilities(normalizedModel)
         setServiceState('ready')
         setServiceMessage('Model ready')
 
         if (!initialized.current) {
-          const holds = new Set(model.board_holds)
+          const startsCatalog = new Set(endpointHolds.start)
+          const endsCatalog = new Set(endpointHolds.end)
           const validStarts = initialRouteState.startHolds
-            .filter((hold) => holds.has(hold))
+            .filter((hold) => startsCatalog.has(hold))
             .slice(0, 2)
           const starts = validStarts.length
             ? validStarts
-            : [holds.has('A4') ? 'A4' : model.board_holds[0]]
+            : [startsCatalog.has('F4') ? 'F4' : endpointHolds.start[0]]
           const validEnds = initialRouteState.endHolds
-            .filter((hold) => holds.has(hold) && !starts.includes(hold))
+            .filter((hold) => endsCatalog.has(hold) && !starts.includes(hold))
             .slice(0, 2)
-          const fallbackEnd = holds.has('G17') && !starts.includes('G17')
+          const fallbackEnd = endsCatalog.has('G17') && !starts.includes('G17')
             ? 'G17'
-            : [...model.board_holds].reverse().find((hold) => !starts.includes(hold))
+            : endpointHolds.end.find((hold) => !starts.includes(hold))
 
           setStartHolds(starts)
           setEndHolds(validEnds.length ? validEnds : [fallbackEnd])
@@ -117,10 +121,15 @@ function App() {
   }
 
   const handleBoardHold = (hold) => {
+    const allowedHolds = capabilities.endpoint_holds[selectionMode]
+    if (!allowedHolds.includes(hold)) {
+      setError(`${displayHoldLabel(hold)} is not available as a ${selectionMode} hold.`)
+      return
+    }
     const activeHolds = selectionMode === 'start' ? startHolds : endHolds
     const otherHolds = selectionMode === 'start' ? endHolds : startHolds
     if (otherHolds.includes(hold)) {
-      setError(`${hold} is already selected as ${selectionMode === 'start' ? 'a finish' : 'a start'} hold.`)
+      setError(`${displayHoldLabel(hold)} is already selected as ${selectionMode === 'start' ? 'a finish' : 'a start'} hold.`)
       return
     }
     const next = activeHolds.includes(hold)
@@ -134,6 +143,8 @@ function App() {
 
   const applyPreset = (preset) => {
     if (!capabilities.supported_grades.includes(preset.grade)) return
+    if (!preset.startHolds.every((hold) => capabilities.endpoint_holds.start.includes(hold))) return
+    if (!preset.endHolds.every((hold) => capabilities.endpoint_holds.end.includes(hold))) return
     setSelectedGrade(preset.grade)
     setStartHolds(preset.startHolds)
     setEndHolds(preset.endHolds)
@@ -268,6 +279,7 @@ function App() {
               candidate={activeCandidate}
               startHolds={startHolds}
               endHolds={endHolds}
+              selectableHolds={capabilities.endpoint_holds[selectionMode]}
               selectionMode={selectionMode}
               onHoldSelect={handleBoardHold}
             />

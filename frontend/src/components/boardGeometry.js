@@ -5,6 +5,12 @@ const CALIBRATION = {
   bottom: 94.4,
 }
 
+// The source dataset was extracted from the MoonBoard LED overlay. Its row
+// values identify the LED below a hold, so the physical hold is one printed
+// board row higher. Keep the legacy values at the API boundary until the model
+// is retrained, but always present and draw the official physical hold label.
+export const DISPLAY_ROW_OFFSET = 1
+
 export function parseHoldLabel(label) {
   return {
     x: label.charCodeAt(0) - 65,
@@ -14,8 +20,21 @@ export function parseHoldLabel(label) {
 
 export function holdPosition(label) {
   const { x, y } = parseHoldLabel(label)
+  const physicalRow = y + DISPLAY_ROW_OFFSET
   return {
     left: CALIBRATION.left + (x / 10) * (CALIBRATION.right - CALIBRATION.left),
-    top: CALIBRATION.bottom - ((y - 1) / 17) * (CALIBRATION.bottom - CALIBRATION.top),
+    top: CALIBRATION.bottom - ((physicalRow - 1) / 17) * (CALIBRATION.bottom - CALIBRATION.top),
+  }
+}
+
+export function displayHoldLabel(label) {
+  const { x, y } = parseHoldLabel(label)
+  return `${String.fromCharCode(65 + x)}${y + DISPLAY_ROW_OFFSET}`
+}
+
+export function fallbackEndpointHolds(boardHolds) {
+  return {
+    start: boardHolds.filter((hold) => parseHoldLabel(hold).y <= 5),
+    end: boardHolds.filter((hold) => parseHoldLabel(hold).y === 17),
   }
 }

@@ -15,6 +15,7 @@ const capabilities = {
   data_version: 'data-v1',
   supported_grades: ['7A'],
   board_holds: ['A4', 'D8', 'F12', 'G17'],
+  endpoint_holds: { start: ['A4'], end: ['G17'] },
 }
 
 const candidate = {

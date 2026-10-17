@@ -192,6 +192,16 @@ class Phase3RouteService:
         self.generator = generator
         self.training_records = tuple(training_records)
         self.valid_hold_labels = set(board_holds)
+        self.valid_start_labels = {
+            label
+            for record in self.training_records
+            for label in record["start_holds"]
+        }
+        self.valid_end_labels = {
+            label
+            for record in self.training_records
+            for label in record["end_holds"]
+        }
         self.profiles = build_grade_profiles(self.training_records)
         self.training_fingerprints = {
             record["fingerprint"] for record in self.training_records
@@ -230,6 +240,11 @@ class Phase3RouteService:
             "supported_grades": list(SUPPORTED_GRADES),
             "board": "MoonBoard 2016",
             "board_holds": sorted(self.valid_hold_labels),
+            "endpoint_holds": {
+                "start": sorted(self.valid_start_labels),
+                "end": sorted(self.valid_end_labels),
+            },
+            "display_row_offset": 1,
             "endpoint_cardinality": {"start": [1, 2], "end": [1, 2]},
             "candidate_limit": 3,
             "selection_policy": "validated_retrieval_first_with_model_alternatives",
@@ -310,6 +325,10 @@ class Phase3RouteService:
             for label in normalized_starts + normalized_ends
         ):
             raise ValueError("all endpoints must exist on the MoonBoard 2016 layout")
+        if any(label not in self.valid_start_labels for label in normalized_starts):
+            raise ValueError("start holds must use observed MoonBoard 2016 start positions")
+        if any(label not in self.valid_end_labels for label in normalized_ends):
+            raise ValueError("finish holds must use MoonBoard 2016 top-row positions")
 
         starts = tuple(Hold.from_label(label) for label in normalized_starts)
         ends = tuple(Hold.from_label(label) for label in normalized_ends)
