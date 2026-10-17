@@ -11,6 +11,8 @@
 > documented in [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md).
 > The constrained Phase 3 API and frozen evaluation are documented in
 > [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md).
+> The responsive Phase 4 React route studio is documented in
+> [`PHASE4_RESULTS.md`](PHASE4_RESULTS.md).
 
 AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
 
@@ -148,6 +150,7 @@ python visualize_path.py
 | [`DATA_CONTRACT.md`](DATA_CONTRACT.md) | Versioned Phase 1 data and frozen benchmark |
 | [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) | Structured Modal training results and promotion decision |
 | [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md) | Constrained inference API, F1 interpretation, and deployment results |
+| [`PHASE4_RESULTS.md`](PHASE4_RESULTS.md) | React route studio, board calibration, and UI verification |
 | [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) | Modal jobs, storage, and deployment commands |
 
 ## 🏗️ Model Architecture

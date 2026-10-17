@@ -1,68 +1,46 @@
-# Frontend
+# Route Forge frontend
 
-Web interface for the Climb Path Generator.
+Responsive React interface for selecting MoonBoard 2016 endpoints, generating
+Phase 3 routes, comparing candidates, and inspecting movement diagnostics.
 
-## Features (Planned)
+## Run locally
 
-- 🎯 **Interactive Grade Selection** - Choose difficulty level (6B to 8B+)
-- 🧗 **MoonBoard Visualization** - Visual representation of the climbing wall
-- 🎨 **Custom Constraints** - Set start/end positions
-- 📊 **Path Preview** - See generated routes with hold sequences
-- 💾 **Save/Export** - Export routes for training
-
-## Tech Stack
-
-- **React** - UI framework
-- **TailwindCSS** - Styling
-- **Lucide React** - Icons
-- **Canvas/Three.js** - MoonBoard visualization
-- **Axios** - API communication
-
-## Setup
-
-```bash
-cd frontend
+```powershell
 npm install
 npm run dev
 ```
 
-## Structure (To Be Created)
+Open `http://localhost:3000`. The default API is the deployed Phase 3 Modal
+endpoint. Override it without placing secrets in the frontend:
 
-```
-frontend/
-├── src/
-│   ├── components/
-│   │   ├── MoonBoard.jsx      # Interactive board visualization
-│   │   ├── GradeSelector.jsx  # Difficulty selector
-│   │   ├── PathDisplay.jsx    # Show generated path
-│   │   └── Controls.jsx       # Generation controls
-│   ├── api/
-│   │   └── client.js          # API client
-│   ├── App.jsx
-│   └── main.jsx
-├── package.json
-└── vite.config.js
+```powershell
+$env:VITE_API_URL = "https://example-api.invalid"
+npm run dev
 ```
 
-## API Integration
+`VITE_API_URL` is a public browser-visible URL, not a credential.
 
-The frontend will communicate with the backend API:
+## Checks
 
-```javascript
-// Generate a new path
-POST /api/generate
-{
-  "grade": "7A",
-  "constraints": {
-    "start_position": [5, 4],
-    "end_position": [6, 17]
-  }
-}
-
-// Response
-{
-  "path": [[5,4], [6,6], [7,8], ..., [6,17]],
-  "grade": "7A",
-  "quality_score": 0.85
-}
+```powershell
+npm test
+npm run lint
+npm run build
+npm audit --omit=dev
 ```
+
+The production build is written to `dist/`. Model weights are never downloaded
+to the frontend or local project.
+
+## API contract
+
+- `GET /api/v1/model` supplies grades, board holds, model/data versions, and
+  endpoint limits.
+- `POST /api/v1/routes/generate` returns up to three validated candidates with
+  route source, hold sequences, scores, and diagnostics.
+
+The deployed API uses exact CORS origins. Add the eventual production frontend
+origin to `CLIMB_ALLOWED_ORIGINS` before publishing the site.
+
+See [`../PHASE4_RESULTS.md`](../PHASE4_RESULTS.md) for the UI design, board
+calibration, test results, and deployment handoff.

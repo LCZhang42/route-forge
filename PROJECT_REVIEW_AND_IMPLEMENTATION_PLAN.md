@@ -377,6 +377,14 @@ model candidates are exposed as alternatives. See `PHASE3_RESULTS.md`.
 
 **Exit gate:** a new user can select endpoints and compare valid routes on desktop and mobile without setup knowledge; overlays line up with physical holds.
 
+**Status (17 October 2026): complete for local development.** The React route
+studio now uses live model capabilities, calibrated and accessible endpoint
+selection, candidate comparison, route diagnostics, cold-start/error states,
+presets, and shareable non-secret URL state. Tests, lint, production build, live
+Modal generation, and 1440 px/360 px visual checks pass. Public frontend hosting
+and its exact production CORS origin remain a Phase 5 deployment task. See
+`PHASE4_RESULTS.md`.
+
 ### Phase 5: production hardening (1-2 days)
 
 - Separate Modal dev/prod environments and promotion by immutable model version.

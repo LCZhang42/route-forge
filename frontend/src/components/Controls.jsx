@@ -1,103 +1,207 @@
-import { useState } from 'react'
-import { Sparkles, Settings } from 'lucide-react'
+import { Flag, MapPin, Sparkles } from 'lucide-react'
+import GradeSelector from './GradeSelector'
 
-function Controls({ onGenerate, isGenerating, selectedGrade }) {
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [temperature, setTemperature] = useState(1.0)
-  const [minHolds, setMinHolds] = useState(3)
-  const [maxHolds, setMaxHolds] = useState(30)
+const ROUTE_PRESETS = [
+  {
+    name: 'Balanced',
+    detail: 'Two-hand start · steady center finish',
+    grade: '6C+',
+    startHolds: ['A4', 'F4'],
+    endHolds: ['G17'],
+  },
+  {
+    name: 'Center pull',
+    detail: 'Single start · direct finish',
+    grade: '7A',
+    startHolds: ['D5'],
+    endHolds: ['G17'],
+  },
+  {
+    name: 'Wide launch',
+    detail: 'Wide start · longer movement',
+    grade: '7B',
+    startHolds: ['A5', 'K5'],
+    endHolds: ['H17'],
+  },
+]
 
-  const handleGenerate = () => {
-    const options = {
-      temperature: parseFloat(temperature),
-      min_holds: parseInt(minHolds),
-      max_holds: parseInt(maxHolds),
-      use_constraints: true,
+function HoldSelect({ id, label, values, boardHolds, excluded, onChange }) {
+  const update = (index, value) => {
+    if (!value && index === 1) {
+      onChange(values.slice(0, 1))
+      return
     }
-    
-    onGenerate(options)
+    const next = [...values]
+    next[index] = value
+    onChange(next.filter(Boolean))
   }
 
+  const optionsFor = (index) => boardHolds.filter(
+    (hold) => hold === values[index]
+      || (!values.includes(hold) && !excluded.includes(hold)),
+  )
+
   return (
-    <div className="bg-slate-800 rounded-lg p-6 shadow-2xl">
-      <h3 className="text-xl font-bold text-white mb-4">Generation Controls</h3>
-      
-      <button
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        className={`w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-          isGenerating
-            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-            : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl'
-        }`}
-      >
-        <Sparkles className="w-5 h-5" />
-        {isGenerating ? 'Generating...' : 'Generate Path'}
-      </button>
-
-      <button
-        onClick={() => setShowAdvanced(!showAdvanced)}
-        className="w-full mt-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-all flex items-center justify-center gap-2"
-      >
-        <Settings className="w-4 h-4" />
-        {showAdvanced ? 'Hide' : 'Show'} Advanced Options
-      </button>
-
-      {showAdvanced && (
-        <div className="mt-4 space-y-4">
-          <div className="p-4 bg-slate-700 rounded-lg">
-            <h4 className="text-sm font-semibold text-white mb-2">Temperature</h4>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                value={temperature}
-                onChange={(e) => setTemperature(e.target.value)}
-                min="0.1"
-                max="2.0"
-                step="0.1"
-                className="flex-1"
-              />
-              <span className="text-white font-mono w-12 text-right">{temperature}</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Higher = more random paths</p>
-          </div>
-
-          <div className="p-4 bg-slate-700 rounded-lg">
-            <h4 className="text-sm font-semibold text-white mb-2">Hold Count Range</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-slate-400">Min</label>
-                <input
-                  type="number"
-                  value={minHolds}
-                  onChange={(e) => setMinHolds(e.target.value)}
-                  min="1"
-                  max="50"
-                  className="w-full px-3 py-2 bg-slate-600 text-white rounded border border-slate-500 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400">Max</label>
-                <input
-                  type="number"
-                  value={maxHolds}
-                  onChange={(e) => setMaxHolds(e.target.value)}
-                  min="1"
-                  max="50"
-                  className="w-full px-3 py-2 bg-slate-600 text-white rounded border border-slate-500 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="mt-4 p-3 bg-slate-700 rounded-lg">
-        <p className="text-xs text-slate-400">
-          Generate a climbing path for grade <span className="font-semibold text-white">{selectedGrade}</span>
-        </p>
+    <div className="hold-select-group">
+      <div className="field-label-row">
+        <label htmlFor={`${id}-primary`}>{label}</label>
+        <span>1–2 holds</span>
+      </div>
+      <div className="hold-selects">
+        <select
+          id={`${id}-primary`}
+          value={values[0] || ''}
+          onChange={(event) => update(0, event.target.value)}
+          required
+        >
+          <option value="" disabled>Select a hold</option>
+          {optionsFor(0).map((hold) => <option key={hold}>{hold}</option>)}
+        </select>
+        <select
+          aria-label={`Optional second ${label.toLowerCase()}`}
+          value={values[1] || ''}
+          onChange={(event) => update(1, event.target.value)}
+        >
+          <option value="">No second hold</option>
+          {optionsFor(1).map((hold) => <option key={hold}>{hold}</option>)}
+        </select>
       </div>
     </div>
+  )
+}
+
+function Controls({
+  capabilities,
+  selectedGrade,
+  onGradeChange,
+  startHolds,
+  endHolds,
+  onStartChange,
+  onEndChange,
+  selectionMode,
+  onSelectionModeChange,
+  seed,
+  onSeedChange,
+  temperature,
+  onTemperatureChange,
+  onApplyPreset,
+  onGenerate,
+  isGenerating,
+}) {
+  const ready = Boolean(selectedGrade && startHolds.length && endHolds.length)
+
+  return (
+    <section className="panel setup-panel" aria-labelledby="setup-title">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Route brief</span>
+          <h2 id="setup-title">Set the problem</h2>
+        </div>
+        <span className="step-badge">01</span>
+      </div>
+
+      <div className="preset-row" aria-label="Route presets">
+        {ROUTE_PRESETS.map((preset) => (
+          <button
+            className="preset-button"
+            type="button"
+            key={preset.name}
+            onClick={() => onApplyPreset(preset)}
+            title={preset.detail}
+          >
+            {preset.name}
+          </button>
+        ))}
+      </div>
+
+      <GradeSelector
+        grades={capabilities.supported_grades}
+        selectedGrade={selectedGrade}
+        onGradeChange={onGradeChange}
+        disabled={isGenerating}
+      />
+
+      <div className="board-mode" aria-label="Board selection mode">
+        <button
+          type="button"
+          className={selectionMode === 'start' ? 'mode-button start is-active' : 'mode-button start'}
+          aria-pressed={selectionMode === 'start'}
+          onClick={() => onSelectionModeChange('start')}
+        >
+          <MapPin size={17} aria-hidden="true" /> Select start
+        </button>
+        <button
+          type="button"
+          className={selectionMode === 'end' ? 'mode-button finish is-active' : 'mode-button finish'}
+          aria-pressed={selectionMode === 'end'}
+          onClick={() => onSelectionModeChange('end')}
+        >
+          <Flag size={17} aria-hidden="true" /> Select finish
+        </button>
+      </div>
+      <p className="mode-help" id="board-instructions">
+        Choose a mode, then click any available hold on the board. Selecting a third hold replaces the second.
+      </p>
+
+      <div className="endpoint-fields">
+        <HoldSelect
+          id="start"
+          label="Start holds"
+          values={startHolds}
+          boardHolds={capabilities.board_holds}
+          excluded={endHolds}
+          onChange={onStartChange}
+        />
+        <HoldSelect
+          id="finish"
+          label="Finish holds"
+          values={endHolds}
+          boardHolds={capabilities.board_holds}
+          excluded={startHolds}
+          onChange={onEndChange}
+        />
+      </div>
+
+      <details className="advanced-settings">
+        <summary>Generation settings</summary>
+        <div className="advanced-grid">
+          <label>
+            Reproducible seed
+            <input
+              type="number"
+              min="0"
+              max="2147483647"
+              value={seed ?? ''}
+              placeholder="Random"
+              onChange={(event) => onSeedChange(
+                event.target.value === '' ? null : Number(event.target.value),
+              )}
+            />
+          </label>
+          <label>
+            Variety <output>{temperature.toFixed(1)}</output>
+            <input
+              type="range"
+              min="0.2"
+              max="1.3"
+              step="0.1"
+              value={temperature}
+              onChange={(event) => onTemperatureChange(Number(event.target.value))}
+            />
+          </label>
+        </div>
+      </details>
+
+      <button
+        className="generate-button"
+        type="button"
+        disabled={!ready || isGenerating}
+        onClick={onGenerate}
+      >
+        <Sparkles size={19} aria-hidden="true" />
+        {isGenerating ? 'Building three routes…' : 'Forge routes'}
+      </button>
+    </section>
   )
 }
 
