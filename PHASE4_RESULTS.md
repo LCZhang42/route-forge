@@ -28,8 +28,9 @@ https://lczhang42--climb-path-phase3-api.modal.run
 - Explains Modal warm-up and gives dedicated connecting, long-wait, retry,
   empty, generating, success, and sanitized error states.
 - Removes the distracting white hover ring from unused holds. A selected route
-  can be edited directly on the board by choosing a colored ring and its new
-  hold, with a one-click restore back to the untouched generated route.
+  can be edited directly on the board by dragging a colored ring to its new
+  hold, with a keyboard fallback and one-click restore to the untouched generated
+  route. The editor bar has a stable height so status changes do not shift the canvas.
 - Compares one conservative retrieval route with up to two model alternatives.
 - Shows route provenance, grouped route holds, longest graph-beta move, novelty,
   movement mode, and all backend warnings without claiming that a route is

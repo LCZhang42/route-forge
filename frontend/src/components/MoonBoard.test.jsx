@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MoonBoard from './MoonBoard'
 import {
@@ -42,6 +42,7 @@ describe('MoonBoard', () => {
         selectionMode="start"
         onHoldSelect={onHoldSelect}
         onRouteHoldSelect={vi.fn()}
+        onRouteHoldMove={vi.fn()}
       />,
     )
 
@@ -67,6 +68,7 @@ describe('MoonBoard', () => {
         selectionMode="start"
         onHoldSelect={vi.fn()}
         onRouteHoldSelect={vi.fn()}
+        onRouteHoldMove={vi.fn()}
       />,
     )
 
@@ -75,8 +77,9 @@ describe('MoonBoard', () => {
     expect(container.querySelector('.board-hold span')).not.toBeInTheDocument()
   })
 
-  it('lets a route ring be selected for moving and restores the generated route', async () => {
+  it('drags a route ring to a new hold and restores the generated route', async () => {
     const onRouteHoldSelect = vi.fn()
+    const onRouteHoldMove = vi.fn()
     const onRouteRestore = vi.fn()
     render(
       <MoonBoard
@@ -97,12 +100,24 @@ describe('MoonBoard', () => {
         movingHold="B7"
         onRouteEditToggle={vi.fn()}
         onRouteHoldSelect={onRouteHoldSelect}
+        onRouteHoldMove={onRouteHoldMove}
         onRouteRestore={onRouteRestore}
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /C9.*Move B8 here/i }))
-    expect(onRouteHoldSelect).toHaveBeenCalledWith('C8')
+    const source = screen.getByRole('button', { name: /B8.*Drag this ring/i })
+    const destination = screen.getByRole('button', { name: /C9.*Press Enter to move B8 here/i })
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      getData: vi.fn(() => 'B7'),
+      setData: vi.fn(),
+    }
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(destination, { dataTransfer })
+    fireEvent.drop(destination, { dataTransfer })
+    expect(onRouteHoldMove).toHaveBeenCalledWith('B7', 'C8')
 
     await userEvent.click(screen.getByRole('button', { name: 'Restore generated route' }))
     expect(onRouteRestore).toHaveBeenCalled()

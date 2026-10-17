@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { generateRoutes, getModelCapabilities } from './api/client'
@@ -95,8 +95,17 @@ describe('App Phase 4 contract', () => {
     await screen.findByText('Conservative match')
 
     await userEvent.click(screen.getByRole('button', { name: 'Edit route' }))
-    await userEvent.click(screen.getByRole('button', { name: /D9, route hold.*Select this ring to move/i }))
-    await userEvent.click(screen.getByRole('button', { name: /E11.*Move D9 here/i }))
+    const source = screen.getByRole('button', { name: /D9, route hold.*Drag this ring/i })
+    const destination = screen.getByRole('button', { name: /E11.*Drop a colored ring here/i })
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      getData: vi.fn(() => 'D8'),
+      setData: vi.fn(),
+    }
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(destination, { dataTransfer })
+    fireEvent.drop(destination, { dataTransfer })
 
     expect(screen.getByRole('button', { name: /E11, route hold/i })).toHaveClass('is-route')
     expect(screen.getByText('Custom route')).toBeInTheDocument()

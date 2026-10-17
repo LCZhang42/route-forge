@@ -629,6 +629,8 @@ input[type="range"] {
 }
 
 .route-edit-bar {
+  box-sizing: border-box;
+  height: 92px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -647,6 +649,7 @@ input[type="range"] {
 
 .route-edit-copy {
   display: grid;
+  flex: 1 1 170px;
   gap: 2px;
   min-width: 0;
 }
@@ -657,6 +660,9 @@ input[type="range"] {
 }
 
 .route-edit-copy span {
+  display: flex;
+  align-items: flex-start;
+  min-height: 2.7em;
   color: #89968d;
   font-size: 0.66rem;
   line-height: 1.35;
@@ -790,6 +796,13 @@ input[type="range"] {
   cursor: crosshair;
 }
 
+.moonboard-frame.is-editing .board-hold:not(.is-start):not(.is-route):not(.is-finish) {
+  width: clamp(24px, 3.5vw, 38px);
+  border-color: transparent;
+  background: transparent;
+  opacity: 0;
+}
+
 .moonboard-frame.is-editing .board-hold.is-start,
 .moonboard-frame.is-editing .board-hold.is-route,
 .moonboard-frame.is-editing .board-hold.is-finish {
@@ -800,6 +813,15 @@ input[type="range"] {
   border-style: dashed;
   transform: translate(-50%, -50%) scale(1.18);
   box-shadow: 0 0 0 5px rgba(216, 255, 82, 0.32), 0 8px 18px rgba(0, 0, 0, 0.55);
+}
+
+.moonboard-frame.is-editing .board-hold.is-drop-target {
+  width: clamp(32px, 4.6vw, 50px);
+  z-index: 5;
+  border: 3px dashed var(--acid);
+  background: rgba(216, 255, 82, 0.18);
+  opacity: 1;
+  box-shadow: 0 0 0 5px rgba(14, 20, 15, 0.45);
 }
 
 .board-hold:disabled {
@@ -1176,6 +1198,7 @@ footer {
   .route-edit-bar {
     align-items: stretch;
     flex-direction: column;
+    height: 132px;
     margin: 0 18px 14px;
   }
 

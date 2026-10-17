@@ -250,6 +250,25 @@ function App() {
     setMovingHold(null)
   }
 
+  const moveRouteHold = (sourceHold, targetHold) => {
+    if (!activeCandidate) return
+    const routeHolds = new Set(activeCandidate.holds)
+    if (!routeHolds.has(sourceHold) || routeHolds.has(targetHold)) return
+
+    const replaceHold = (holds) => holds.map((item) => item === sourceHold ? targetHold : item)
+    setEditedCandidates((current) => ({
+      ...current,
+      [selectedCandidate]: {
+        ...activeCandidate,
+        start_holds: replaceHold(activeCandidate.start_holds),
+        middle_holds: replaceHold(activeCandidate.middle_holds),
+        end_holds: replaceHold(activeCandidate.end_holds),
+        holds: replaceHold(activeCandidate.holds),
+      },
+    }))
+    setMovingHold(null)
+  }
+
   const handleRouteHoldSelect = (hold) => {
     if (!activeCandidate) return
     const routeHolds = new Set(activeCandidate.holds)
@@ -269,18 +288,7 @@ function App() {
       return
     }
 
-    const replaceHold = (holds) => holds.map((item) => item === movingHold ? hold : item)
-    setEditedCandidates((current) => ({
-      ...current,
-      [selectedCandidate]: {
-        ...activeCandidate,
-        start_holds: replaceHold(activeCandidate.start_holds),
-        middle_holds: replaceHold(activeCandidate.middle_holds),
-        end_holds: replaceHold(activeCandidate.end_holds),
-        holds: replaceHold(activeCandidate.holds),
-      },
-    }))
-    setMovingHold(null)
+    moveRouteHold(movingHold, hold)
   }
 
   return (
@@ -377,6 +385,7 @@ function App() {
               movingHold={movingHold}
               onRouteEditToggle={toggleRouteEdit}
               onRouteHoldSelect={handleRouteHoldSelect}
+              onRouteHoldMove={moveRouteHold}
               onRouteRestore={restoreGeneratedRoute}
             />
           </div>
