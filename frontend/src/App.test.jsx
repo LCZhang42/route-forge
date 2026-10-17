@@ -16,6 +16,7 @@ const capabilities = {
   supported_grades: ['7A'],
   board_holds: ['A4', 'D8', 'F12', 'G17'],
   endpoint_holds: { start: ['A4'], end: ['G17'] },
+  profiles: { '7A': { soft_move_limit: 5 } },
 }
 
 const candidate = {
@@ -27,8 +28,9 @@ const candidate = {
   end_holds: ['G17'],
   holds: ['A4', 'D8', 'F12', 'G17'],
   diagnostics: {
-    warnings: [],
-    maximum_move_distance: 4.5,
+    warnings: ['one or more moves are unusually long for this grade'],
+    move_distances: [5, 4.472, 5.099],
+    maximum_move_distance: 5.099,
     novel_route: false,
   },
 }
@@ -64,6 +66,8 @@ describe('App Phase 4 contract', () => {
       candidate_count: 3,
     })))
     expect(await screen.findByText('Conservative match')).toBeInTheDocument()
+    expect(screen.getByText('Large move · F13 → G18 · 5.1 grid units')).toBeInTheDocument()
+    expect(screen.getByText('Longer than 95% of recorded 7A moves')).toBeInTheDocument()
     expect(screen.queryByText(/3 valid routes/i)).not.toBeInTheDocument()
     expect(screen.getByText(/1 valid routes/i)).toBeInTheDocument()
   })

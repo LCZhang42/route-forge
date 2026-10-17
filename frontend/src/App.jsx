@@ -273,6 +273,7 @@ function App() {
               candidates={candidates}
               selectedIndex={selectedCandidate}
               onSelect={setSelectedCandidate}
+              profiles={capabilities.profiles}
             />
             {candidates.length > 0 && (
               <button className="share-button" type="button" onClick={handleShare}>

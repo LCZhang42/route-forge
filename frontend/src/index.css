@@ -686,14 +686,40 @@ input[type="range"] {
   font-size: 0.62rem;
 }
 
+.candidate-warnings {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0 41px;
+}
+
 .candidate-warning {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin: 10px 0 0 41px;
   color: #ffc3a8;
   font-size: 0.65rem;
   line-height: 1.4;
+}
+
+.candidate-warning svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.candidate-warning strong,
+.candidate-warning small {
+  display: block;
+}
+
+.candidate-warning strong {
+  color: #ffd5c2;
+  font-weight: 650;
+}
+
+.candidate-warning small {
+  margin-top: 2px;
+  color: #b89686;
+  font-size: 0.58rem;
 }
 
 .safety-note {
