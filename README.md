@@ -1,236 +1,208 @@
-# Climb Path Generator 🧗‍♂️
+# Route Forge
 
-> **Current runtime:** model training and inference are hosted on Modal. Model
-> weights are not stored or executed locally. See
-> [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) for the smoke-train, training,
-> and deployment commands.
->
-> The canonical Phase 1 dataset, reproducible split builder, and benchmark are
-> documented in [`DATA_CONTRACT.md`](DATA_CONTRACT.md).
-> Phase 2 structured-training results, including the failed promotion gate, are
-> documented in [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md).
-> The constrained Phase 3 API and frozen evaluation are documented in
-> [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md).
-> The responsive Phase 4 React route studio is documented in
-> [`PHASE4_RESULTS.md`](PHASE4_RESULTS.md).
+Route Forge is an AI-assisted MoonBoard 2016 problem generator. The React app
+lets a setter choose a grade, one or two start holds, one or two finish holds,
+and a movement style. It then compares a conservative training-data match with
+up to two model-generated alternatives on an interactive board.
 
-AI-powered MoonBoard climbing route generation system using fine-tuned DistilGPT-2. Generates realistic climbing paths of varying difficulty levels (6B to 8B+) with endpoint conditioning and quality filtering.
+The frontend runs locally, while training and inference run on Modal. Model
+weights are never downloaded to this repository or executed on the local
+computer.
 
-## 🎯 Features
+> Generated routes are suggestions, not certified safe or climbable problems.
+> Check every route on the physical wall and use human judgment.
 
-- ✅ **Fine-tuned DistilGPT-2** - Lightweight pre-trained language model (82M parameters)
-- ✅ **Endpoint Conditioning** - Specify grade, start hold, and end hold to generate intermediate holds
-- ✅ **Grade-Conditioned Generation** - Generate routes for specific difficulty levels (6B+ to 7C+)
-- ✅ **Quality Filtering** - Train on high-quality, balanced routes for better outputs
-- ✅ **Interactive Web Interface** - Gradio-based UI for easy route generation and visualization
-- ✅ **Serverless GPU Training** - Reproducible Modal T4 jobs with persistent model storage
+## Run the tool locally
 
-## 🖼️ Gradio Web Interface
+### Requirements
 
-<!-- Screenshot placeholder - Add your Gradio app screenshot here -->
-![Gradio Web Interface](docs/gradio_screenshot.png)
-*Interactive web interface for generating and visualizing climbing routes*
+- Node.js 18 or newer
+- npm
+- An internet connection to reach the deployed Modal API
 
-## 📁 Project Structure
+Python, PyTorch, a GPU, and a Modal login are **not** required to use the web
+app.
 
+### Start the web app
+
+From the repository root:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000). The frontend uses the
+deployed Phase 3 API by default:
+
+```text
+https://lczhang42--climb-path-phase3-api.modal.run
+```
+
+The Modal container scales to zero after five idle minutes. The first request
+after an idle period can therefore take around a minute while the GPU container
+starts and loads the model; later requests are much faster.
+
+To use another API deployment, set `VITE_API_URL` before starting Vite. This URL
+is visible in the browser and must never contain a token or other secret.
+
+PowerShell:
+
+```powershell
+$env:VITE_API_URL = "https://your-api.example.com"
+npm run dev
+```
+
+Bash/zsh:
+
+```bash
+VITE_API_URL="https://your-api.example.com" npm run dev
+```
+
+### Verify the frontend
+
+```powershell
+cd frontend
+npm test -- --run
+npm run lint
+npm run build
+```
+
+The production build is written to `frontend/dist/`.
+
+## How to use Route Forge
+
+1. Choose an optional **Quick setup**, or select a target grade manually. The
+   three presets are examples only; all supported grades remain available.
+2. Choose **Safer**, **Balanced**, or **Dynamic** movement. Grade controls the
+   intended difficulty, while movement style controls how adventurous the
+   allowed reach can be.
+3. Select one or two green start holds and one or two orange finish holds. The
+   UI only exposes known 2016 starting positions and valid top-row finishes.
+4. Open **Generation settings** if you want a repeatable seed or a different
+   sampling temperature, then select **Forge routes**.
+5. Compare the conservative route with the model alternatives. The cards show
+   included holds, longest beta move, novelty, and movement warnings.
+6. On the movement canvas, select **Edit route** and drag any colored ring to a
+   different hold. Select **Restore generated route** to discard manual edits.
+   Keyboard users can press Enter on a ring and then Enter on its destination.
+7. Use **Copy shareable setup** to copy the grade, endpoints, seed, and movement
+   mode in the page URL. Manual canvas edits are temporary and are not included
+   in that URL.
+
+## Training and generation overview
+
+The versioned MoonBoard 2016 data contract contains 6,597 deduplicated training
+routes across nine grades from 6B+ through 7C+. Each route is represented with
+atomic tokens for its grade, start holds, middle holds, and finish holds.
+
+Training fine-tunes DistilGPT-2 on a Modal T4 GPU using completion-only loss,
+fixed seeds, validation checkpoints, and a frozen evaluation set. Checkpoints
+are stored in the `climb-path-models` Modal Volume and the Hugging Face cache is
+stored in `climb-path-hf-cache`; neither is committed to Git.
+
+The selected structured checkpoint did not beat nearest-route retrieval on
+middle-hold F1 (`0.1171` versus `0.1462`). For that reason, the deployed Phase 3
+service is retrieval-first rather than model-only:
+
+- candidate 1 is a validated conservative match from the training data;
+- later candidates are diverse DistilGPT-2 alternatives;
+- invalid, duplicate, or severely unreachable candidates are rejected;
+- survivors are ranked using grade-aware route length, move distance, upward
+  progression, model score, and novelty.
+
+F1 measures overlap with a held-out human route. It is useful for reproducible
+model comparison, but it does not prove that a route is physically feasible.
+See [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) and
+[`PHASE3_RESULTS.md`](PHASE3_RESULTS.md) for the measured results.
+
+## Run training on Modal
+
+Training is optional and is separate from running the local web app.
+
+### 1. Install and authenticate the Modal CLI
+
+Use Python 3.11 or 3.12:
+
+```powershell
+python -m pip install "modal==1.6.1"
+python -m modal token new
+```
+
+Modal stores its credential in the user's Modal profile outside this
+repository. Do not paste Modal tokens into source code, `.env` files, frontend
+configuration, or Git.
+
+### 2. Run a small smoke training job
+
+```powershell
+python -X utf8 -m modal run modal_app.py::train_phase2 `
+  --run-name structured-smoke `
+  --num-epochs 1 `
+  --max-train-samples 256 `
+  --max-validation-samples 128
+```
+
+### 3. Run the measured structured training configuration
+
+```powershell
+python -X utf8 -m modal run modal_app.py::train_phase2 `
+  --run-name structured-v1 `
+  --num-epochs 3 `
+  --learning-rate 0.0001
+```
+
+This trains and evaluates the checkpoint, then stores it at
+`/models/phase2/structured-v1/final` in the Modal Volume.
+
+### 4. Re-run evaluation without retraining
+
+```powershell
+python -X utf8 -m modal run modal_app.py::evaluate_phase3 `
+  --model-version structured-v1 `
+  --evaluation-split frozen
+```
+
+### 5. Deploy the API
+
+```powershell
+python -m modal deploy modal_app.py
+```
+
+Deployment and training commands do not automatically promote a checkpoint.
+Keep the retrieval fallback until a new model passes the frozen evaluation and
+physical-validation gates. Full operational details are in
+[`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md).
+
+## Project structure
+
+```text
 climb-path/
+├── frontend/              React/Vite route studio
 ├── backend/
-│   ├── data_processing/     # Data cleaning, analysis, and preparation
-│   ├── models/              # Model architectures, tokenizer, dataset loaders
-│   ├── training/            # Training, evaluation, and generation scripts
-│   └── api/                 # FastAPI endpoints (optional)
-├── data/                    # MoonBoard 2016 dataset (train/val/test splits)
-├── docs/                    # Architecture documentation and research notes
-├── frontend/                # React-based visualization (optional)
-├── checkpoints/             # Saved model checkpoints
-├── runs/                    # TensorBoard training logs
-├── web_interface.py         # Gradio web app for route generation
-└── *.md                     # Comprehensive documentation guides
+│   ├── api/               Phase 0 and Phase 3 FastAPI services
+│   ├── data_processing/   Dataset preparation and validation
+│   ├── evaluation/        Frozen evaluation and Phase 3 scoring
+│   ├── models/            Tokenization and dataset helpers
+│   └── training/          Baseline and structured fine-tuning
+├── data_contract/v1/      Versioned splits, board holds, and manifests
+├── tests/                 Local and opt-in deployed API tests
+├── modal_app.py           Modal training, evaluation, and API definitions
+└── *.md                   Design, results, and deployment documentation
 ```
 
-## 📊 Dataset
+## Documentation
 
-**MoonBoard 2016** climbing problems dataset:
-- **6,597** canonical Phase 1 training routes after deduplication
-- **Grades**: 6B+, 6C, 6C+, 7A, 7A+, 7B, 7B+, 7C, 7C+ (rare grades removed)
-- **Hold positions**: (x, y) coordinates on 11×18 grid
-- **Quality metrics**: Filtered by repeats and quality scores
-- **Format**: Grade + Start Hold + End Hold → Intermediate Holds
+| Guide | Purpose |
+|---|---|
+| [`DATA_CONTRACT.md`](DATA_CONTRACT.md) | Dataset schema, splits, hashes, and frozen benchmark |
+| [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) | Structured fine-tuning results and promotion decision |
+| [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md) | Constrained generation, F1 interpretation, and API results |
+| [`PHASE4_RESULTS.md`](PHASE4_RESULTS.md) | React UI, board calibration, and interaction design |
+| [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) | Modal authentication, jobs, volumes, and deployment |
+| [`PROJECT_REVIEW_AND_IMPLEMENTATION_PLAN.md`](PROJECT_REVIEW_AND_IMPLEMENTATION_PLAN.md) | Original review and phased implementation plan |
 
-## 🚀 Quick Start
-
-### 1. Installation
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Verify installation
-python test_model.py
-```
-
-See [`INSTALL.md`](INSTALL.md) for detailed installation instructions.
-
-### 2. Train the Model
-
-```bash
-# Windows
-train_distilgpt2.bat
-
-# Linux/Mac
-python backend/training/finetune_huggingface.py
-```
-
-**Training time**: ~2-3 hours on CPU, ~20 minutes on GPU
-
-See [`QUICKSTART.md`](QUICKSTART.md) for detailed training instructions.
-
-### 3. Generate Routes
-
-#### Using Gradio Web Interface (Easiest)
-```bash
-# Windows
-start_web_interface.bat
-
-# Linux/Mac
-python web_interface.py
-```
-
-Then open http://localhost:7860 in your browser.
-
-#### Using Command Line
-```bash
-# Windows
-generate_paths.bat
-
-# Linux/Mac
-python backend/training/generate_with_gpt2.py --grade 7A --start_hold 0,4 --end_hold 8,17 --num_samples 5
-```
-
-#### Using Python API
-```python
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import torch
-
-# Load model
-model = GPT2LMHeadModel.from_pretrained('checkpoints/distilgpt2_climb/final')
-tokenizer = GPT2Tokenizer.from_pretrained('checkpoints/distilgpt2_climb/final')
-model.eval()
-
-# Generate route
-prompt = "GRADE: 7A | START: (0,4) | END: (8,17) | MID:"
-input_ids = tokenizer.encode(prompt, return_tensors='pt')
-output = model.generate(input_ids, max_length=256, temperature=0.8)
-generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
-print(generated_text)
-```
-
-### 4. Visualize Results
-
-```bash
-# Visualize training progress
-tensorboard --logdir checkpoints/distilgpt2_climb/logs
-
-# Visualize generated paths
-python visualize_path.py
-```
-
-## 📚 Documentation
-
-| Guide | Description |
-|-------|-------------|
-| [`INSTALL.md`](INSTALL.md) | Installation and setup instructions |
-| [`QUICKSTART.md`](QUICKSTART.md) | Quick start guide for training and generation |
-| [`WINDOWS_SETUP.md`](WINDOWS_SETUP.md) | Windows-specific setup instructions |
-| [`WORKFLOW.md`](WORKFLOW.md) | Complete workflow from data to deployment |
-| [`ENDPOINT_CONDITIONING.md`](ENDPOINT_CONDITIONING.md) | Endpoint conditioning explanation |
-| [`GRADE_BALANCE_GUIDE.md`](GRADE_BALANCE_GUIDE.md) | Grade balance and filtering guide |
-| [`QUALITY_FILTERING_GUIDE.md`](QUALITY_FILTERING_GUIDE.md) | Training with quality-filtered data |
-| [`DATA_CONTRACT.md`](DATA_CONTRACT.md) | Versioned Phase 1 data and frozen benchmark |
-| [`PHASE2_RESULTS.md`](PHASE2_RESULTS.md) | Structured Modal training results and promotion decision |
-| [`PHASE3_RESULTS.md`](PHASE3_RESULTS.md) | Constrained inference API, F1 interpretation, and deployment results |
-| [`PHASE4_RESULTS.md`](PHASE4_RESULTS.md) | React route studio, board calibration, and UI verification |
-| [`MODAL_DEPLOYMENT.md`](MODAL_DEPLOYMENT.md) | Modal jobs, storage, and deployment commands |
-
-## 🏗️ Model Architecture
-
-**Type**: Fine-tuned DistilGPT-2 (Causal Language Model)
-
-**Specifications**:
-- Base model: DistilGPT-2 (82M parameters, 6 layers, 768 hidden size)
-- Vocabulary: ~50k tokens (GPT-2 tokenizer)
-- Input format: `GRADE: 7A | START: (0,4) | END: (8,17) | MID:`
-- Output format: `GRADE: 7A | START: (0,4) | END: (8,17) | MID: (1,7) (3,11) (5,13)`
-- Max sequence length: 256 tokens
-
-**Key Features**:
-1. **Endpoint Conditioning** - Specify start and end holds, model generates intermediate
-2. **Pre-trained Knowledge** - Leverages GPT-2's sequence understanding
-3. **Fast Training** - 2-3 hours on CPU, 20 minutes on GPU
-4. **Lightweight** - 82M parameters (33% smaller than GPT-2)
-5. **Text-based** - Natural language format for climbing paths
-
-## 🛠️ Tech Stack
-
-**Machine Learning**:
-- PyTorch 2.1+ (deep learning framework)
-- HuggingFace Transformers (DistilGPT-2)
-- Datasets (data loading)
-- TensorBoard (training visualization)
-
-**Data Processing**:
-- Pandas, NumPy (data manipulation)
-- Scikit-learn (train/val/test splits)
-
-**Web Interface**:
-- Gradio (interactive UI)
-- Matplotlib (route visualization)
-
-**Optional**:
-- FastAPI + Uvicorn (REST API)
-- React + TailwindCSS (custom frontend)
-
-## 🎓 Training Tips
-
-1. **Use quality-filtered data** - Train on balanced, high-quality routes
-2. **Monitor validation loss** - Should be < 2.0 after 10 epochs
-3. **Adjust temperature** - Lower (0.6-0.8) for realistic, higher (1.0-1.2) for creative routes
-4. **Specify endpoints** - Control start/end positions for better results
-5. **Check grade balance** - Use `analyze_grade_distribution.py` to verify data balance
-
-## 📈 Results & Evaluation
-
-Evaluate model performance:
-```bash
-# Generate sample paths
-generate_paths.bat
-
-# Visualize paths
-python visualize_path.py
-
-# Check grade distribution
-python analyze_grade_distribution.py
-```
-
-## 🤝 Contributing
-
-This is a research project. Feel free to:
-- Experiment with different architectures
-- Add new loss functions or constraints
-- Improve the web interface
-- Extend to other climbing wall types
-
-## 📄 License
+## License
 
 MIT
-
-## 🙏 Acknowledgments
-
-- **MoonBoard** for the climbing dataset
-- **HuggingFace** for the Transformers library and DistilGPT-2
-- **OpenAI** for the GPT-2 architecture
-
----
-
-**Ready to generate climbing routes?** Start with [`INSTALL.md`](INSTALL.md) → [`QUICKSTART.md`](QUICKSTART.md) → [`web_interface.py`](web_interface.py)
