@@ -18,6 +18,16 @@ const closestHold = (holds, target) => holds.reduce((closest, hold) => (
 ))
 
 function candidateMoveDetails(candidate) {
+  const plausiblePath = candidate.diagnostics.plausible_path || []
+  if (plausiblePath.length > 1) {
+    return plausiblePath.slice(0, -1).map((from, index) => ({
+      from,
+      to: plausiblePath[index + 1],
+      distance: candidate.diagnostics.move_distances?.[index]
+        ?? gridDistance(from, plausiblePath[index + 1]),
+    }))
+  }
+
   const pairs = []
   const middle = candidate.middle_holds || []
   if (middle.length > 0) {
@@ -41,6 +51,12 @@ function candidateMoveDetails(candidate) {
     distance: candidate.diagnostics.move_distances?.[index] ?? gridDistance(from, to),
   }))
 }
+
+const movementModeLabel = (mode) => ({
+  safer: 'Safer beta',
+  balanced: 'Balanced beta',
+  dynamic: 'Dynamic beta',
+}[mode] || 'Graph checked')
 
 function warningItems(candidate, profile) {
   const warnings = candidate.diagnostics.warnings || []
@@ -109,7 +125,8 @@ function CandidateList({ candidates, selectedIndex, onSelect, profiles = {} }) {
                   <span><i className="hold-key finish" />Finish {candidate.end_holds.map(displayHoldLabel).join(', ')}</span>
                 </div>
                 <div className="candidate-metrics">
-                  <span>Longest grid gap <b>{candidate.diagnostics.maximum_move_distance.toFixed(1)}</b></span>
+                  <span>Longest beta move <b>{candidate.diagnostics.maximum_move_distance.toFixed(1)}</b></span>
+                  <span>{movementModeLabel(candidate.diagnostics.generation_mode)}</span>
                   <span>{candidate.diagnostics.novel_route ? 'Novel route' : 'Training match'}</span>
                 </div>
                 {warnings.length > 0 && (

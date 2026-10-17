@@ -56,7 +56,7 @@ runtime_image = (
         copy=True,
     )
     # Bump when a runtime-only correction must replace every warm web container.
-    .env({"CLIMB_SOURCE_REVISION": "moonboard-2016-layout-v2"})
+    .env({"CLIMB_SOURCE_REVISION": "graph-generation-modes-v2"})
 )
 
 app = modal.App(APP_NAME)

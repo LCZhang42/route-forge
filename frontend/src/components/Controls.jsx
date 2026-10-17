@@ -26,6 +26,12 @@ const ROUTE_PRESETS = [
   },
 ]
 
+const FALLBACK_GENERATION_MODES = [
+  { id: 'safer', label: 'Safer', description: 'Common reach for this grade' },
+  { id: 'balanced', label: 'Balanced', description: 'Moderate reach variation' },
+  { id: 'dynamic', label: 'Dynamic', description: 'Rare, powerful moves allowed' },
+]
+
 function HoldSelect({ id, label, values, boardHolds, excluded, onChange }) {
   const update = (index, value) => {
     if (!value && index === 1) {
@@ -89,6 +95,8 @@ function Controls({
   onSeedChange,
   temperature,
   onTemperatureChange,
+  generationMode,
+  onGenerationModeChange,
   onApplyPreset,
   onGenerate,
   isGenerating,
@@ -125,6 +133,28 @@ function Controls({
         onGradeChange={onGradeChange}
         disabled={isGenerating}
       />
+
+      <fieldset className="generation-mode-fieldset" disabled={isGenerating}>
+        <legend>Movement style</legend>
+        <p>Grade sets the difficulty. Style sets how adventurous the reach can be.</p>
+        <div className="generation-mode-grid" role="radiogroup" aria-label="Movement style">
+          {(capabilities.generation_modes || FALLBACK_GENERATION_MODES).map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              role="radio"
+              aria-checked={generationMode === mode.id}
+              className={generationMode === mode.id
+                ? `generation-mode-button ${mode.id} is-active`
+                : `generation-mode-button ${mode.id}`}
+              onClick={() => onGenerationModeChange(mode.id)}
+            >
+              <strong>{mode.label}</strong>
+              <span>{mode.description}</span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="board-mode" aria-label="Board selection mode">
         <button

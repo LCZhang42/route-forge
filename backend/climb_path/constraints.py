@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from heapq import heappop, heappush
 from math import hypot
 from statistics import median
 from typing import Any, Iterable, Sequence
 
 from .schema import Hold, Route, SUPPORTED_GRADES
+
+
+SUPPORTED_GENERATION_MODES = ("safer", "balanced", "dynamic")
 
 
 def _percentile(values: Sequence[float], fraction: float) -> float:
@@ -72,6 +76,9 @@ class RouteDiagnostics:
     reachability_violations: int
     downward_moves: int
     novel_route: bool
+    generation_mode: str
+    feasibility_limit: float
+    plausible_path: tuple[str, ...]
 
     @property
     def valid(self) -> bool:
@@ -132,6 +139,73 @@ def route_fingerprint(route: Route) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def generation_mode_limit(profile: GradeProfile, generation_mode: str) -> float:
+    """Return the grade-relative graph edge limit for a movement style."""
+
+    if generation_mode == "safer":
+        return profile.soft_move_limit
+    if generation_mode == "balanced":
+        return min(profile.hard_move_limit, profile.soft_move_limit * 1.15)
+    if generation_mode == "dynamic":
+        return profile.hard_move_limit
+    raise ValueError(
+        f"Unsupported generation mode: {generation_mode}; expected one of "
+        f"{', '.join(SUPPORTED_GENERATION_MODES)}"
+    )
+
+
+def _best_path_to_finish(route: Route, finish: Hold) -> tuple[Hold, ...]:
+    """Find the upward-biased path whose largest move is as small as possible."""
+
+    holds = tuple(dict.fromkeys(route.holds))
+    starts = set(route.start_holds)
+    queue: list[tuple[float, float, int, Hold, tuple[Hold, ...]]] = []
+    best: dict[Hold, tuple[float, float, int]] = {}
+    for start in route.start_holds:
+        cost = (0.0, 0.0, 0)
+        best[start] = cost
+        heappush(queue, (*cost, start, (start,)))
+
+    while queue:
+        maximum, total, steps, current, path = heappop(queue)
+        if best.get(current) != (maximum, total, steps):
+            continue
+        if current == finish:
+            return path
+        for neighbor in holds:
+            if neighbor == current or neighbor in starts:
+                continue
+            # A one-row drop can represent a match, cross, or body reposition;
+            # larger drops are not useful in a plausible upward beta.
+            if neighbor.y < current.y - 1:
+                continue
+            distance = _distance(current, neighbor)
+            next_cost = (max(maximum, distance), total + distance, steps + 1)
+            if neighbor not in best or next_cost < best[neighbor]:
+                best[neighbor] = next_cost
+                heappush(queue, (*next_cost, neighbor, path + (neighbor,)))
+    return ()
+
+
+def plausible_beta_path(route: Route) -> tuple[Hold, ...]:
+    """Return the gentlest graph path needed to reach the hardest finish hold."""
+
+    paths = [
+        path
+        for finish in route.end_holds
+        if (path := _best_path_to_finish(route, finish))
+    ]
+    if not paths:
+        return ()
+    return max(
+        paths,
+        key=lambda path: (
+            max((_distance(left, right) for left, right in zip(path, path[1:])), default=0),
+            sum(_distance(left, right) for left, right in zip(path, path[1:])),
+        ),
+    )
+
+
 def diagnose_route(
     route: Route,
     *,
@@ -141,6 +215,7 @@ def diagnose_route(
     valid_hold_labels: set[str],
     profile: GradeProfile,
     training_fingerprints: set[str],
+    generation_mode: str = "balanced",
 ) -> RouteDiagnostics:
     hard_rejections: list[str] = []
     warnings: list[str] = []
@@ -161,13 +236,15 @@ def diagnose_route(
     if middle_count > profile.maximum_middle_holds:
         hard_rejections.append("too_many_middle_holds")
 
-    pairs = route_move_pairs(route)
+    path = plausible_beta_path(route)
+    pairs = tuple(zip(path, path[1:]))
     distances = tuple(_distance(left, right) for left, right in pairs)
+    feasibility_limit = generation_mode_limit(profile, generation_mode)
     reachability_violations = sum(
         distance > profile.soft_move_limit for distance in distances
     )
-    if any(distance > profile.hard_move_limit for distance in distances):
-        hard_rejections.append("severe_reachability_violation")
+    if not path or any(distance > feasibility_limit for distance in distances):
+        hard_rejections.append("no_plausible_beta_for_generation_mode")
     elif reachability_violations:
         warnings.append("one or more moves are unusually long for this grade")
 
@@ -191,6 +268,9 @@ def diagnose_route(
         reachability_violations=reachability_violations,
         downward_moves=downward_moves,
         novel_route=novel,
+        generation_mode=generation_mode,
+        feasibility_limit=round(feasibility_limit, 3),
+        plausible_path=tuple(hold.label for hold in path),
     )
 
 

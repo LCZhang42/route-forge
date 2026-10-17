@@ -32,6 +32,7 @@ function App() {
   const [selectionMode, setSelectionMode] = useState('start')
   const [seed, setSeed] = useState(initialRouteState.seed)
   const [temperature, setTemperature] = useState(0.8)
+  const [generationMode, setGenerationMode] = useState(initialRouteState.generationMode)
 
   const [candidates, setCandidates] = useState([])
   const [selectedCandidate, setSelectedCandidate] = useState(0)
@@ -88,6 +89,12 @@ function App() {
                 ? '7A'
                 : model.supported_grades[0],
           )
+          const availableModes = new Set(
+            (model.generation_modes || []).map((mode) => mode.id),
+          )
+          if (availableModes.size && !availableModes.has(initialRouteState.generationMode)) {
+            setGenerationMode('balanced')
+          }
           initialized.current = true
         }
       })
@@ -106,10 +113,16 @@ function App() {
 
   useEffect(() => {
     if (!capabilities || !selectedGrade) return
-    const query = writeRouteState({ grade: selectedGrade, startHolds, endHolds, seed })
+    const query = writeRouteState({
+      grade: selectedGrade,
+      startHolds,
+      endHolds,
+      seed,
+      generationMode,
+    })
     const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}`
     window.history.replaceState(null, '', nextUrl)
-  }, [capabilities, selectedGrade, startHolds, endHolds, seed])
+  }, [capabilities, selectedGrade, startHolds, endHolds, seed, generationMode])
 
   const clearResults = () => {
     setCandidates([])
@@ -175,13 +188,15 @@ function App() {
         candidate_count: 3,
         temperature,
         top_p: 0.95,
+        generation_mode: generationMode,
         ...(seed === null ? {} : { seed }),
       })
       setCandidates(result.candidates)
       setSelectedCandidate(0)
       setSeed(result.seed)
+      const routeLabel = result.candidates.length === 1 ? 'route' : 'routes'
       setGenerationMessage(
-        `${result.candidates.length} valid routes · ${result.rejected_attempts} sampled routes filtered`,
+        `${result.candidates.length} ${generationMode} ${routeLabel} · ${result.rejected_attempts} sampled routes filtered`,
       )
     } catch (requestError) {
       setError(getApiErrorMessage(requestError))
@@ -260,6 +275,8 @@ function App() {
               onSeedChange={setSeed}
               temperature={temperature}
               onTemperatureChange={setTemperature}
+              generationMode={generationMode}
+              onGenerationModeChange={(mode) => { setGenerationMode(mode); clearResults() }}
               onApplyPreset={applyPreset}
               onGenerate={handleGenerate}
               isGenerating={isGenerating}

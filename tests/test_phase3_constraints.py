@@ -122,7 +122,63 @@ class Phase3ConstraintTests(unittest.TestCase):
         )
 
         self.assertFalse(diagnostics.valid)
-        self.assertIn("severe_reachability_violation", diagnostics.hard_rejections)
+        self.assertIn(
+            "no_plausible_beta_for_generation_mode", diagnostics.hard_rejections
+        )
+
+    def test_graph_beta_can_reorder_the_available_route_holds(self):
+        route = Route(
+            grade="7A",
+            start_holds=(Hold.from_label("A4"),),
+            middle_holds=(
+                Hold.from_label("G12"),
+                Hold.from_label("D8"),
+            ),
+            end_holds=(Hold.from_label("G17"),),
+        )
+        diagnostics = diagnose_route(
+            route,
+            requested_grade="7A",
+            requested_starts=route.start_holds,
+            requested_ends=route.end_holds,
+            valid_hold_labels={hold.label for hold in route.holds},
+            profile=GradeProfile("7A", 1, 2, 3, 5.1, 7.0),
+            training_fingerprints=set(),
+            generation_mode="safer",
+        )
+
+        self.assertTrue(diagnostics.valid)
+        self.assertEqual(
+            diagnostics.plausible_path, ("A4", "D8", "G12", "G17")
+        )
+
+    def test_generation_modes_use_grade_relative_reach_limits(self):
+        route = Route(
+            grade="7A",
+            start_holds=(Hold.from_label("A4"),),
+            middle_holds=(Hold.from_label("E8"), Hold.from_label("G12")),
+            end_holds=(Hold.from_label("G17"),),
+        )
+        common = dict(
+            route=route,
+            requested_grade="7A",
+            requested_starts=route.start_holds,
+            requested_ends=route.end_holds,
+            valid_hold_labels={hold.label for hold in route.holds},
+            profile=GradeProfile("7A", 1, 2, 3, 5.0, 7.0),
+            training_fingerprints=set(),
+        )
+
+        safer = diagnose_route(**common, generation_mode="safer")
+        balanced = diagnose_route(**common, generation_mode="balanced")
+        dynamic = diagnose_route(**common, generation_mode="dynamic")
+
+        self.assertFalse(safer.valid)
+        self.assertTrue(balanced.valid)
+        self.assertTrue(dynamic.valid)
+        self.assertEqual(safer.feasibility_limit, 5.0)
+        self.assertEqual(balanced.feasibility_limit, 5.75)
+        self.assertEqual(dynamic.feasibility_limit, 7.0)
 
     def test_service_uses_retrieval_when_model_candidates_are_rejected(self):
         reference = self.training_records[0]

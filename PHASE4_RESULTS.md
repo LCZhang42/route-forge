@@ -19,18 +19,29 @@ https://lczhang42--climb-path-phase3-api.modal.run
   duplicated in frontend code.
 - Provides one- or two-hold start and finish selection using calibrated board
   controls or native keyboard-accessible selects.
-- Includes three route presets and reproducible seed/variety controls.
+- Includes three route presets, reproducible seed/variety controls, and Safer,
+  Balanced, and Dynamic movement modes.
 - Explains Modal warm-up and gives dedicated connecting, long-wait, retry,
   empty, generating, success, and sanitized error states.
 - Compares one conservative retrieval route with up to two model alternatives.
-- Shows route provenance, grouped route holds, longest move, novelty, and all backend
-  warnings without claiming that a route is guaranteed climbable.
+- Shows route provenance, grouped route holds, longest graph-beta move, novelty,
+  movement mode, and all backend warnings without claiming that a route is
+  guaranteed climbable.
 - Names the exact endpoints and grid distance of each unusually long move, and
   explains that the warning marks the longest 5% of recorded moves for the
   selected grade.
 - Lets users switch the active candidate and see start, intermediate, and finish
   holds as transparent rings. The wall deliberately omits connecting lines and
   sequence numbers so it identifies the problem without prescribing beta.
+- Enlarges the colored rings so the selected physical holds remain easy to find
+  from climbing distance.
+- Treats generated holds as a graph rather than assuming the stored hold order is
+  the beta. The backend finds the upward-biased start-to-finish path that
+  minimizes the largest move, then filters it through a grade-derived mode limit.
+- Keeps grade and movement style independent: grade continues to condition hold
+  choice and route length, while style changes only the allowed reach envelope.
+  Safer uses the grade's 95th-percentile move limit, Balanced allows a 15% margin,
+  and Dynamic allows the grade-derived hard cap.
 - Maps the legacy screenshot/LED row values to the physical hold one row above,
   removes the extra white marker halo, and limits endpoint selection to the 24
   verified 2016 start positions and nine valid top-row finish positions.
@@ -38,7 +49,7 @@ https://lczhang42--climb-path-phase3-api.modal.run
   UI boundary. It appeared in only one malformed three-start source route and
   does not correspond to an installed 2016 handhold; its tokenizer entry is
   retained only so the existing checkpoint remains loadable.
-- Stores only grade, endpoint labels, and seed in the URL for shareable,
+- Stores only grade, movement mode, endpoint labels, and seed in the URL for shareable,
   non-secret setup state.
 
 ## Board calibration
@@ -59,11 +70,16 @@ start or finish holds are not incorrectly rendered as climbing moves.
 
 ## Verification
 
-- `npm test`: six component, state, and API-contract tests pass.
+- `npm test`: eight component, state, and API-contract tests pass.
+- `python -m unittest tests.test_phase3_constraints tests.test_phase3_api -v`:
+  fourteen graph-constraint and API tests pass.
 - `npm run lint`: zero warnings or errors.
 - `npm run build`: production Vite build succeeds.
 - Live browser QA generated three real Phase 3 candidates and verified the
   selected route against the board photograph.
+- The deployed Modal smoke test verifies the selected generation mode and a
+  non-empty graph-derived plausible path. Browser QA also exercised Safer,
+  Balanced, and Dynamic modes against the live endpoint.
 - Responsive QA passed at 1440 px and 360 px with no horizontal overflow.
 - The 360 px layout preserves setup → comparison → board reading order.
 - Endpoint selection has visible focus styles, semantic labels, radio/pressed

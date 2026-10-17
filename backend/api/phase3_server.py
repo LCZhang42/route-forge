@@ -13,7 +13,7 @@ from pathlib import Path
 import secrets
 from threading import Lock
 import time
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -51,6 +51,7 @@ class Phase3GenerateRequest(BaseModel):
     temperature: float = Field(0.8, ge=0.2, le=1.3)
     top_p: float = Field(0.95, ge=0.5, le=1.0)
     seed: int | None = Field(None, ge=0, le=2**31 - 1)
+    generation_mode: Literal["safer", "balanced", "dynamic"] = "balanced"
 
     @field_validator("grade")
     @classmethod
@@ -114,6 +115,9 @@ class DiagnosticsResponse(BaseModel):
     reachability_violations: int
     downward_moves: int
     novel_route: bool
+    generation_mode: str
+    feasibility_limit: float
+    plausible_path: list[str]
 
 
 class Phase3CandidateResponse(BaseModel):
@@ -140,6 +144,7 @@ class Phase3GenerateResponse(BaseModel):
     used_fallback: bool
     generated_attempts: int
     rejected_attempts: int
+    generation_mode: str
     candidates: list[Phase3CandidateResponse]
 
 
@@ -261,6 +266,7 @@ def create_phase3_app(service: RouteService | None = None) -> FastAPI:
                         temperature=payload.temperature,
                         top_p=payload.top_p,
                         seed=seed,
+                        generation_mode=payload.generation_mode,
                     )
                 ),
                 timeout=request_timeout,
@@ -269,7 +275,11 @@ def create_phase3_app(service: RouteService | None = None) -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except NoValidRouteError:
             raise HTTPException(
-                status_code=422, detail="No route passed the generation constraints"
+                status_code=422,
+                detail=(
+                    f"No route passed {payload.generation_mode} movement constraints. "
+                    "Try a less restrictive mode or different endpoints."
+                ),
             ) from None
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="Route generation timed out") from None
@@ -310,6 +320,7 @@ def create_phase3_app(service: RouteService | None = None) -> FastAPI:
                     "event": "generation_completed",
                     "request_id": request_id,
                     "grade": payload.grade,
+                    "generation_mode": payload.generation_mode,
                     "candidate_count": len(candidates),
                     "used_fallback": result.used_fallback,
                     "latency_ms": round((time.perf_counter() - started) * 1000, 2),
@@ -325,6 +336,7 @@ def create_phase3_app(service: RouteService | None = None) -> FastAPI:
             used_fallback=result.used_fallback,
             generated_attempts=result.generated_attempts,
             rejected_attempts=result.rejected_attempts,
+            generation_mode=payload.generation_mode,
             candidates=candidates,
         )
 

@@ -16,6 +16,11 @@ const capabilities = {
   supported_grades: ['7A'],
   board_holds: ['A4', 'D8', 'F12', 'G17'],
   endpoint_holds: { start: ['A4'], end: ['G17'] },
+  generation_modes: [
+    { id: 'safer', label: 'Safer', description: 'Common reach for this grade' },
+    { id: 'balanced', label: 'Balanced', description: 'Moderate reach variation' },
+    { id: 'dynamic', label: 'Dynamic', description: 'Rare, powerful moves allowed' },
+  ],
   profiles: { '7A': { soft_move_limit: 5 } },
 }
 
@@ -32,6 +37,9 @@ const candidate = {
     move_distances: [5, 4.472, 5.099],
     maximum_move_distance: 5.099,
     novel_route: false,
+    generation_mode: 'balanced',
+    feasibility_limit: 5.75,
+    plausible_path: ['A4', 'D8', 'F12', 'G17'],
   },
 }
 
@@ -64,11 +72,12 @@ describe('App Phase 4 contract', () => {
       start_holds: ['A4'],
       end_holds: ['G17'],
       candidate_count: 3,
+      generation_mode: 'balanced',
     })))
     expect(await screen.findByText('Conservative match')).toBeInTheDocument()
     expect(screen.getByText('Large move · F13 → G18 · 5.1 grid units')).toBeInTheDocument()
     expect(screen.getByText('Longer than 95% of recorded 7A moves')).toBeInTheDocument()
-    expect(screen.queryByText(/3 valid routes/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/1 valid routes/i)).toBeInTheDocument()
+    expect(screen.queryByText(/3 balanced routes/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/1 balanced route/i)).toBeInTheDocument()
   })
 })

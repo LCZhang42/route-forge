@@ -12,6 +12,7 @@ from backend.evaluation.nearest_route_baseline import NearestRouteBaseline
 from .constraints import (
     GradeProfile,
     RouteDiagnostics,
+    SUPPORTED_GENERATION_MODES,
     build_grade_profiles,
     diagnose_route,
     route_fingerprint,
@@ -264,6 +265,23 @@ class Phase3RouteService:
             "endpoint_cardinality": {"start": [1, 2], "end": [1, 2]},
             "candidate_limit": 3,
             "selection_policy": "validated_retrieval_first_with_model_alternatives",
+            "generation_modes": [
+                {
+                    "id": "safer",
+                    "label": "Safer",
+                    "description": "Uses only moves within the usual range for the selected grade.",
+                },
+                {
+                    "id": "balanced",
+                    "label": "Balanced",
+                    "description": "Allows modest reach outliers while preferring a connected beta.",
+                },
+                {
+                    "id": "dynamic",
+                    "label": "Dynamic",
+                    "description": "Allows rare, powerful moves up to the grade-derived hard limit.",
+                },
+            ],
             "profiles": {
                 grade: {
                     "minimum_middle_holds": profile.minimum_middle_holds,
@@ -281,6 +299,7 @@ class Phase3RouteService:
         route: Route,
         starts: Sequence[Hold],
         ends: Sequence[Hold],
+        generation_mode: str,
     ) -> RouteDiagnostics:
         return diagnose_route(
             route,
@@ -290,6 +309,7 @@ class Phase3RouteService:
             valid_hold_labels=self.valid_hold_labels,
             profile=self.profiles[route.grade],
             training_fingerprints=self.training_fingerprints,
+            generation_mode=generation_mode,
         )
 
     @staticmethod
@@ -325,9 +345,15 @@ class Phase3RouteService:
         temperature: float,
         top_p: float,
         seed: int,
+        generation_mode: str = "balanced",
     ) -> GenerationResult:
         if grade not in self.profiles:
             raise ValueError(f"Unsupported grade: {grade}")
+        if generation_mode not in SUPPORTED_GENERATION_MODES:
+            raise ValueError(
+                f"Unsupported generation mode: {generation_mode}; expected one of "
+                f"{', '.join(SUPPORTED_GENERATION_MODES)}"
+            )
         normalized_starts = tuple(label.strip().upper() for label in start_holds)
         normalized_ends = tuple(label.strip().upper() for label in end_holds)
         if not 1 <= len(normalized_starts) <= 2 or not 1 <= len(normalized_ends) <= 2:
@@ -348,7 +374,10 @@ class Phase3RouteService:
 
         starts = tuple(Hold.from_label(label) for label in normalized_starts)
         ends = tuple(Hold.from_label(label) for label in normalized_ends)
-        attempts = min(max(candidate_count * 4, 4), 12)
+        attempt_multiplier = {"safer": 6, "balanced": 5, "dynamic": 4}[
+            generation_mode
+        ]
+        attempts = min(max(candidate_count * attempt_multiplier, 4), 18)
         generated = self.generator.generate_middle_candidates(
             grade=grade,
             start_holds=normalized_starts,
@@ -372,7 +401,7 @@ class Phase3RouteService:
                 ),
                 end_holds=ends,
             )
-            diagnostics = self._diagnose(route, starts, ends)
+            diagnostics = self._diagnose(route, starts, ends, generation_mode)
             fingerprint = route_fingerprint(route)
             if not diagnostics.valid or fingerprint in seen_fingerprints:
                 rejected += 1
@@ -409,7 +438,9 @@ class Phase3RouteService:
             middle_holds=middle,
             end_holds=ends,
         )
-        fallback_diagnostics = self._diagnose(fallback_route, starts, ends)
+        fallback_diagnostics = self._diagnose(
+            fallback_route, starts, ends, generation_mode
+        )
         fallback_candidate = (
             RankedRouteCandidate(
                 route=fallback_route,

@@ -276,6 +276,7 @@ button:disabled {
 }
 
 .grade-fieldset legend,
+.generation-mode-fieldset legend,
 .field-label-row label,
 .advanced-grid label {
   color: #dbe1da;
@@ -302,6 +303,71 @@ button:disabled {
   color: var(--acid-ink);
   border-color: var(--acid);
   background: var(--acid);
+}
+
+.generation-mode-fieldset {
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.generation-mode-fieldset > p {
+  margin: 7px 0 10px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.generation-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.generation-mode-button {
+  min-width: 0;
+  min-height: 76px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: #c7d0c8;
+  background: #111713;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.generation-mode-button:hover {
+  transform: translateY(-1px);
+  border-color: #5b6a5f;
+}
+
+.generation-mode-button strong,
+.generation-mode-button span {
+  display: block;
+}
+
+.generation-mode-button strong {
+  font-size: 0.76rem;
+}
+
+.generation-mode-button span {
+  color: #829087;
+  font-size: 0.61rem;
+  line-height: 1.35;
+}
+
+.generation-mode-button.is-active {
+  border-color: var(--acid);
+  color: var(--acid);
+  background: rgba(216, 255, 82, 0.09);
+}
+
+.generation-mode-button.is-active span {
+  color: #c4cfb5;
 }
 
 .board-mode {
@@ -531,12 +597,12 @@ input[type="range"] {
 .board-hold.is-start,
 .board-hold.is-finish,
 .board-hold.is-route {
-  width: clamp(24px, 3.2vw, 34px);
+  width: clamp(32px, 4.6vw, 50px);
   z-index: 4;
   opacity: 1;
-  border: 3px solid;
+  border: 4px solid;
   background: transparent;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.48);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.52);
 }
 
 .board-hold.is-start { border-color: #24954a; }

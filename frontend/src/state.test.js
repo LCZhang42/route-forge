@@ -8,6 +8,7 @@ describe('shareable route state', () => {
       startHolds: ['A4', 'F4'],
       endHolds: ['G17'],
       seed: 42,
+      generationMode: 'dynamic',
     })
 
     expect(readRouteState(`?${query}`)).toEqual({
@@ -15,6 +16,7 @@ describe('shareable route state', () => {
       startHolds: ['A4', 'F4'],
       endHolds: ['G17'],
       seed: 42,
+      generationMode: 'dynamic',
     })
   })
 
@@ -24,6 +26,7 @@ describe('shareable route state', () => {
       startHolds: ['A4', 'F4'],
       endHolds: ['G17'],
       seed: null,
+      generationMode: 'balanced',
     })
   })
 })

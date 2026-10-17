@@ -21,6 +21,7 @@ class Phase3DeploymentTests(unittest.TestCase):
                     "end_holds": ["G17"],
                     "candidate_count": 1,
                     "seed": 42,
+                    "generation_mode": "balanced",
                 }
             ).encode("utf-8"),
             headers={"Content-Type": "application/json"},
@@ -31,8 +32,12 @@ class Phase3DeploymentTests(unittest.TestCase):
 
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["seed"], 42)
+        self.assertEqual(payload["generation_mode"], "balanced")
         self.assertTrue(payload["candidates"])
         self.assertTrue(payload["candidates"][0]["diagnostics"]["valid"])
+        self.assertGreaterEqual(
+            len(payload["candidates"][0]["diagnostics"]["plausible_path"]), 2
+        )
 
 
 if __name__ == "__main__":

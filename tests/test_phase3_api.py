@@ -42,6 +42,9 @@ class FakePhase3Service:
             reachability_violations=0,
             downward_moves=0,
             novel_route=True,
+            generation_mode=kwargs["generation_mode"],
+            feasibility_limit=5.5,
+            plausible_path=("A4", "D8", "F12", "G17"),
         )
         return GenerationResult(
             candidates=(
@@ -79,6 +82,7 @@ class Phase3ApiTests(unittest.TestCase):
                     "end_holds": ["G17"],
                     "candidate_count": 1,
                     "seed": 123,
+                    "generation_mode": "safer",
                 },
             )
 
@@ -86,7 +90,12 @@ class Phase3ApiTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["seed"], 123)
         self.assertEqual(payload["model_version"], "fake-v1")
+        self.assertEqual(payload["generation_mode"], "safer")
         self.assertEqual(payload["candidates"][0]["start_holds"], ["A4", "F4"])
+        self.assertEqual(
+            payload["candidates"][0]["diagnostics"]["plausible_path"],
+            ["A4", "D8", "F12", "G17"],
+        )
         self.assertTrue(payload["candidates"][0]["diagnostics"]["valid"])
         self.assertNotIn("traceback", response.text.lower())
 
