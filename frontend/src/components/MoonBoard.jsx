@@ -1,3 +1,4 @@
+import { Pencil, RotateCcw } from 'lucide-react'
 import { displayHoldLabel, holdPosition } from './boardGeometry'
 
 function MoonBoard({
@@ -8,6 +9,12 @@ function MoonBoard({
   selectableHolds,
   selectionMode,
   onHoldSelect,
+  routeEditMode = false,
+  routeModified = false,
+  movingHold = null,
+  onRouteEditToggle,
+  onRouteHoldSelect,
+  onRouteRestore,
 }) {
   const routeHolds = new Set(candidate?.holds || [])
   const routeStarts = new Set(candidate?.start_holds || [])
@@ -28,7 +35,39 @@ function MoonBoard({
         </div>
       </div>
 
-      <div className="moonboard-frame" aria-describedby="board-instructions">
+      {candidate && (
+        <div className={routeEditMode ? 'route-edit-bar is-editing' : 'route-edit-bar'}>
+          <div className="route-edit-copy" role="status">
+            <strong>{routeModified ? 'Custom route' : 'Generated route'}</strong>
+            <span>
+              {routeEditMode
+                ? movingHold
+                  ? `Moving ${displayHoldLabel(movingHold)} — choose its new hold.`
+                  : 'Select a colored ring, then choose its new hold.'
+                : routeModified
+                  ? 'Your changes are shown on the board.'
+                  : 'Edit the rings without changing the generated result.'}
+            </span>
+          </div>
+          <div className="route-edit-actions">
+            {routeModified && (
+              <button type="button" className="route-edit-button secondary" onClick={onRouteRestore}>
+                <RotateCcw size={15} aria-hidden="true" /> Restore generated route
+              </button>
+            )}
+            <button
+              type="button"
+              className={routeEditMode ? 'route-edit-button is-active' : 'route-edit-button'}
+              aria-pressed={routeEditMode}
+              onClick={onRouteEditToggle}
+            >
+              <Pencil size={15} aria-hidden="true" /> {routeEditMode ? 'Done editing' : 'Edit route'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={routeEditMode ? 'moonboard-frame is-editing' : 'moonboard-frame'} aria-describedby="board-instructions">
         <img
           src="/data/moonboard2016Background.jpg"
           alt="MoonBoard 2016 hold layout, columns A to K and rows 1 to 18"
@@ -38,10 +77,11 @@ function MoonBoard({
         <div className="hold-layer">
           {boardHolds.map((hold) => {
             const position = holdPosition(hold)
-            const isStart = startHolds.includes(hold)
-            const isEnd = endHolds.includes(hold)
+            const isStart = candidate ? routeStarts.has(hold) : startHolds.includes(hold)
+            const isEnd = candidate ? routeFinishes.has(hold) : endHolds.includes(hold)
             const isRoute = routeHolds.has(hold)
             const canSelect = selectable.has(hold)
+            const isMoveSource = movingHold === hold
             const displayLabel = displayHoldLabel(hold)
             const routeRole = routeStarts.has(hold)
               ? 'route start'
@@ -55,18 +95,24 @@ function MoonBoard({
               isStart ? 'is-start' : '',
               isEnd ? 'is-finish' : '',
               isRoute && !isStart && !isEnd ? 'is-route' : '',
+              isMoveSource ? 'is-move-source' : '',
             ].filter(Boolean).join(' ')
+            const editInstruction = isRoute
+              ? 'Select this ring to move it.'
+              : movingHold
+                ? `Move ${displayHoldLabel(movingHold)} here.`
+                : 'Select a colored ring before choosing a destination.'
             return (
               <button
                 key={hold}
                 type="button"
                 className={classes}
                 style={{ left: `${position.left}%`, top: `${position.top}%` }}
-                aria-label={`${displayLabel}${routeRole ? `, ${routeRole}` : ''}${isStart ? ', selected start' : ''}${isEnd ? ', selected finish' : ''}. ${canSelect ? `Set as ${selectionMode}.` : `Not available as ${selectionMode}.`}`}
-                aria-pressed={selectionMode === 'start' ? isStart : isEnd}
-                disabled={!canSelect}
-                tabIndex={isStart || isEnd ? 0 : -1}
-                onClick={() => onHoldSelect(hold)}
+                aria-label={`${displayLabel}${routeRole ? `, ${routeRole}` : ''}${isStart ? ', selected start' : ''}${isEnd ? ', selected finish' : ''}. ${routeEditMode ? editInstruction : canSelect ? `Set as ${selectionMode}.` : `Not available as ${selectionMode}.`}`}
+                aria-pressed={routeEditMode ? isMoveSource : selectionMode === 'start' ? isStart : isEnd}
+                disabled={!routeEditMode && !canSelect}
+                tabIndex={routeEditMode || isStart || isEnd ? 0 : -1}
+                onClick={() => routeEditMode ? onRouteHoldSelect(hold) : onHoldSelect(hold)}
               />
             )
           })}
@@ -74,8 +120,8 @@ function MoonBoard({
       </div>
 
       <div className="board-footer">
-        <span>{selectableHolds.length} available {selectionMode} positions</span>
-        <span>{candidate ? `${candidate.holds.length} holds in selected route` : 'Select endpoints to begin'}</span>
+        <span>{routeEditMode ? 'Route editing is on' : `${selectableHolds.length} available ${selectionMode} positions`}</span>
+        <span>{candidate ? `${candidate.holds.length} holds in ${routeModified ? 'custom' : 'selected'} route` : 'Select endpoints to begin'}</span>
       </div>
     </section>
   )

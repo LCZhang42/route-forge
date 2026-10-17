@@ -23,9 +23,13 @@ https://lczhang42--climb-path-phase3-api.modal.run
   Balanced, and Dynamic movement modes.
 - Separates the presets under a `Quick setup` label, avoids the former duplicate
   `Balanced` naming, and keeps preset/movement explanations in hover and keyboard
-  focus tooltips so the default setup panel stays compact.
+  focus tooltips so the default setup panel stays compact. The setup-label tooltip
+  also makes clear that 6C+, 7A, and 7B are examples, not the full grade range.
 - Explains Modal warm-up and gives dedicated connecting, long-wait, retry,
   empty, generating, success, and sanitized error states.
+- Removes the distracting white hover ring from unused holds. A selected route
+  can be edited directly on the board by choosing a colored ring and its new
+  hold, with a one-click restore back to the untouched generated route.
 - Compares one conservative retrieval route with up to two model alternatives.
 - Shows route provenance, grouped route holds, longest graph-beta move, novelty,
   movement mode, and all backend warnings without claiming that a route is

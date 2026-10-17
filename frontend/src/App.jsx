@@ -36,6 +36,9 @@ function App() {
 
   const [candidates, setCandidates] = useState([])
   const [selectedCandidate, setSelectedCandidate] = useState(0)
+  const [editedCandidates, setEditedCandidates] = useState({})
+  const [routeEditMode, setRouteEditMode] = useState(false)
+  const [movingHold, setMovingHold] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationMessage, setGenerationMessage] = useState('')
   const [error, setError] = useState('')
@@ -127,6 +130,9 @@ function App() {
   const clearResults = () => {
     setCandidates([])
     setSelectedCandidate(0)
+    setEditedCandidates({})
+    setRouteEditMode(false)
+    setMovingHold(null)
     setGenerationMessage('')
     setError('')
   }
@@ -193,6 +199,9 @@ function App() {
       })
       setCandidates(result.candidates)
       setSelectedCandidate(0)
+      setEditedCandidates({})
+      setRouteEditMode(false)
+      setMovingHold(null)
       setSeed(result.seed)
       const routeLabel = result.candidates.length === 1 ? 'route' : 'routes'
       setGenerationMessage(
@@ -217,7 +226,62 @@ function App() {
     }
   }
 
-  const activeCandidate = candidates[selectedCandidate] || null
+  const generatedCandidate = candidates[selectedCandidate] || null
+  const activeCandidate = editedCandidates[selectedCandidate] || generatedCandidate
+  const routeModified = Boolean(editedCandidates[selectedCandidate])
+
+  const selectCandidate = (index) => {
+    setSelectedCandidate(index)
+    setRouteEditMode(false)
+    setMovingHold(null)
+  }
+
+  const toggleRouteEdit = () => {
+    setRouteEditMode((isEditing) => !isEditing)
+    setMovingHold(null)
+  }
+
+  const restoreGeneratedRoute = () => {
+    setEditedCandidates((current) => {
+      const next = { ...current }
+      delete next[selectedCandidate]
+      return next
+    })
+    setMovingHold(null)
+  }
+
+  const handleRouteHoldSelect = (hold) => {
+    if (!activeCandidate) return
+    const routeHolds = new Set(activeCandidate.holds)
+
+    if (!movingHold) {
+      if (routeHolds.has(hold)) setMovingHold(hold)
+      return
+    }
+
+    if (hold === movingHold) {
+      setMovingHold(null)
+      return
+    }
+
+    if (routeHolds.has(hold)) {
+      setMovingHold(hold)
+      return
+    }
+
+    const replaceHold = (holds) => holds.map((item) => item === movingHold ? hold : item)
+    setEditedCandidates((current) => ({
+      ...current,
+      [selectedCandidate]: {
+        ...activeCandidate,
+        start_holds: replaceHold(activeCandidate.start_holds),
+        middle_holds: replaceHold(activeCandidate.middle_holds),
+        end_holds: replaceHold(activeCandidate.end_holds),
+        holds: replaceHold(activeCandidate.holds),
+      },
+    }))
+    setMovingHold(null)
+  }
 
   return (
     <div className="app-shell">
@@ -289,7 +353,7 @@ function App() {
             <CandidateList
               candidates={candidates}
               selectedIndex={selectedCandidate}
-              onSelect={setSelectedCandidate}
+              onSelect={selectCandidate}
               profiles={capabilities.profiles}
             />
             {candidates.length > 0 && (
@@ -308,6 +372,12 @@ function App() {
               selectableHolds={capabilities.endpoint_holds[selectionMode]}
               selectionMode={selectionMode}
               onHoldSelect={handleBoardHold}
+              routeEditMode={routeEditMode}
+              routeModified={routeModified}
+              movingHold={movingHold}
+              onRouteEditToggle={toggleRouteEdit}
+              onRouteHoldSelect={handleRouteHoldSelect}
+              onRouteRestore={restoreGeneratedRoute}
             />
           </div>
         </main>

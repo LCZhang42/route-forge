@@ -41,6 +41,7 @@ describe('MoonBoard', () => {
         selectableHolds={['A4', 'G17']}
         selectionMode="start"
         onHoldSelect={onHoldSelect}
+        onRouteHoldSelect={vi.fn()}
       />,
     )
 
@@ -65,11 +66,45 @@ describe('MoonBoard', () => {
         selectableHolds={candidate.holds}
         selectionMode="start"
         onHoldSelect={vi.fn()}
+        onRouteHoldSelect={vi.fn()}
       />,
     )
 
     expect(screen.getByRole('button', { name: /B8, route hold/i })).toHaveClass('is-route')
     expect(container.querySelector('.route-lines')).not.toBeInTheDocument()
     expect(container.querySelector('.board-hold span')).not.toBeInTheDocument()
+  })
+
+  it('lets a route ring be selected for moving and restores the generated route', async () => {
+    const onRouteHoldSelect = vi.fn()
+    const onRouteRestore = vi.fn()
+    render(
+      <MoonBoard
+        boardHolds={['A4', 'B7', 'C8', 'G17']}
+        candidate={{
+          holds: ['A4', 'B7', 'G17'],
+          start_holds: ['A4'],
+          middle_holds: ['B7'],
+          end_holds: ['G17'],
+        }}
+        startHolds={['A4']}
+        endHolds={['G17']}
+        selectableHolds={['A4']}
+        selectionMode="start"
+        onHoldSelect={vi.fn()}
+        routeEditMode
+        routeModified
+        movingHold="B7"
+        onRouteEditToggle={vi.fn()}
+        onRouteHoldSelect={onRouteHoldSelect}
+        onRouteRestore={onRouteRestore}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /C9.*Move B8 here/i }))
+    expect(onRouteHoldSelect).toHaveBeenCalledWith('C8')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Restore generated route' }))
+    expect(onRouteRestore).toHaveBeenCalled()
   })
 })

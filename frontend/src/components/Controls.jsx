@@ -114,7 +114,14 @@ function Controls({
       </div>
 
       <div className="preset-field">
-        <span className="control-label">Quick setup</span>
+        <span
+          className="control-label has-tooltip"
+          tabIndex="0"
+          data-tooltip="Optional examples for 6C+, 7A, and 7B. Each preset sets the grade, start, and finish; every supported grade remains available below."
+          aria-label="Quick setup: Optional examples for 6C+, 7A, and 7B. Each preset sets the grade, start, and finish; every supported grade remains available below."
+        >
+          Quick setup
+        </span>
         <div className="preset-row" aria-label="Quick route setups">
           {ROUTE_PRESETS.map((preset) => (
             <button
