@@ -425,3 +425,11 @@ and its exact production CORS origin remain a Phase 5 deployment task. See
 6. Deploy one inference API and connect the redesigned React client.
 
 This sequence reduces the risk of paying for a training run whose data contract, target representation, or evaluation is invalid.
+
+## Multi-setup continuation
+
+Research and the proposed architecture for the 2016, Masters 2017, Masters
+2019, Mini 2020, 2024, and Mini 2025 layouts are documented in
+`MULTI_SETUP_IMPLEMENTATION_PLAN.md`. The recommended next increment is a
+versioned layout registry followed by licensed Masters 2019 data, not an
+immediate combined retraining run.
