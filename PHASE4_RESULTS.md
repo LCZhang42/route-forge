@@ -22,9 +22,11 @@ https://lczhang42--climb-path-phase3-api.modal.run
 - Explains Modal warm-up and gives dedicated connecting, long-wait, retry,
   empty, generating, success, and sanitized error states.
 - Compares one conservative retrieval route with up to two model alternatives.
-- Shows route provenance, hold sequence, longest move, novelty, and all backend
+- Shows route provenance, grouped route holds, longest move, novelty, and all backend
   warnings without claiming that a route is guaranteed climbable.
-- Lets users switch the active candidate and see its ordered movement overlay.
+- Lets users switch the active candidate and see start, intermediate, and finish
+  holds as transparent rings. The wall deliberately omits connecting lines and
+  sequence numbers so it identifies the problem without prescribing beta.
 - Stores only grade, endpoint labels, and seed in the URL for shareable,
   non-secret setup state.
 

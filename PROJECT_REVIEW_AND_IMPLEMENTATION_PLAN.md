@@ -114,7 +114,7 @@ For product acceptance, add a small blind human review by experienced climbers o
 - The UI cannot select start/end holds, compare candidates, inspect warnings, or reproduce a route from a seed.
 - Color is the main distinction between start/middle/end, which is weak for accessibility.
 
-**Recommendation:** use a calibrated board coordinate map (or SVG overlay) and make the board the primary interactive control. Fetch supported grades from the API, let users click one or two starts and one or two finishes, and return three ranked candidates. Use shapes, labels, and sequence numbers in addition to color.
+**Recommendation:** use a calibrated board coordinate map and make the board the primary interactive control. Fetch supported grades from the API, let users click one or two starts and one or two finishes, and return three ranked candidates. Highlight holds with transparent, color-coded rings so the physical hold remains visible; avoid lines and sequence numbers that imply a prescribed beta.
 
 ## Recommended modeling approach
 
@@ -250,7 +250,9 @@ Validate coordinates and min/max relationships server-side. Configure CORS with 
 - Prefer an SVG overlay or calibrated normalized center coordinates for each physical hold. Do not derive centers from full-image grid cells.
 - Render at device pixel ratio for sharp overlays and recompute on container resize.
 - Make every valid hold keyboard-focusable or provide an equivalent accessible list.
-- Use distinct marker shapes and text: `S1/S2`, numbered middle moves, and `T1/T2`, plus color.
+- Use transparent, color-coded rings for starts, intermediate holds, and finishes.
+  Preserve role text in the legend, candidate details, and accessible labels rather
+  than drawing sequence numbers or connecting lines over the wall.
 - Support path toggling and candidate comparison without redrawing the base bitmap each time.
 
 ### Feedback and trust

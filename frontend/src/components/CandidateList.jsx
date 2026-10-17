@@ -41,8 +41,12 @@ function CandidateList({ candidates, selectedIndex, onSelect }) {
                   </div>
                   {selected && <Check className="selected-check" size={18} aria-label="Selected" />}
                 </div>
-                <div className="route-sequence" aria-label={`Route sequence: ${candidate.holds.join(', ')}`}>
-                  {candidate.holds.join(' · ')}
+                <div className="route-hold-groups" aria-label={`Included holds: starts ${candidate.start_holds.join(', ')}; other holds ${candidate.middle_holds.join(', ')}; finishes ${candidate.end_holds.join(', ')}`}>
+                  <span><i className="hold-key start" />Start {candidate.start_holds.join(', ')}</span>
+                  {candidate.middle_holds.length > 0 && (
+                    <span><i className="hold-key move" />Holds {candidate.middle_holds.join(', ')}</span>
+                  )}
+                  <span><i className="hold-key finish" />Finish {candidate.end_holds.join(', ')}</span>
                 </div>
                 <div className="candidate-metrics">
                   <span>Longest move <b>{candidate.diagnostics.maximum_move_distance.toFixed(1)}</b></span>

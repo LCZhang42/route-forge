@@ -492,7 +492,6 @@ input[type="range"] {
   user-select: none;
 }
 
-.route-lines,
 .hold-layer {
   position: absolute;
   inset: 0;
@@ -500,22 +499,8 @@ input[type="range"] {
   height: 100%;
 }
 
-.route-lines {
-  z-index: 2;
-  pointer-events: none;
-}
-
-.route-lines line {
-  stroke: rgba(12, 18, 14, 0.82);
-  stroke-width: 3.2;
-  stroke-linecap: round;
-  stroke-dasharray: 1.2 1.35;
-  vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.4));
-}
-
 .hold-layer {
-  z-index: 3;
+  z-index: 2;
 }
 
 .board-hold {
@@ -546,18 +531,28 @@ input[type="range"] {
 .board-hold.is-start,
 .board-hold.is-finish,
 .board-hold.is-route {
-  width: clamp(21px, 3vw, 31px);
+  width: clamp(24px, 3.2vw, 34px);
   z-index: 4;
   opacity: 1;
-  border: 2px solid white;
-  font-size: clamp(0.55rem, 1.2vw, 0.72rem);
-  font-weight: 900;
-  box-shadow: 0 3px 11px rgba(0, 0, 0, 0.38);
+  border: 3px solid;
+  background: transparent;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.94),
+    0 4px 12px rgba(0, 0, 0, 0.48);
 }
 
-.board-hold.is-start { background: #24954a; }
-.board-hold.is-route { background: #277ed7; }
-.board-hold.is-finish { background: #e45f34; }
+.board-hold.is-start { border-color: #24954a; }
+.board-hold.is-route { border-color: #277ed7; }
+.board-hold.is-finish { border-color: #e45f34; }
+
+.board-hold.is-start:hover,
+.board-hold.is-start:focus-visible,
+.board-hold.is-route:hover,
+.board-hold.is-route:focus-visible,
+.board-hold.is-finish:hover,
+.board-hold.is-finish:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+}
 
 .board-footer {
   display: flex;
@@ -646,15 +641,33 @@ input[type="range"] {
   color: var(--acid);
 }
 
-.route-sequence {
+.route-hold-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   margin: 11px 0 10px 41px;
-  overflow: hidden;
   color: #c7d0c8;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.7rem;
   line-height: 1.55;
-  text-overflow: ellipsis;
 }
+
+.route-hold-groups span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hold-key {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border: 2px solid;
+  border-radius: 50%;
+}
+
+.hold-key.start { border-color: #57d279; }
+.hold-key.move { border-color: var(--blue); }
+.hold-key.finish { border-color: var(--orange); }
 
 .candidate-metrics {
   display: flex;

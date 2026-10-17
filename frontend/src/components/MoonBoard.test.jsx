@@ -28,4 +28,27 @@ describe('MoonBoard', () => {
     expect(onHoldSelect).toHaveBeenCalledWith('G17')
     expect(screen.getByRole('button', { name: /A4, selected start/i })).toHaveAttribute('aria-pressed', 'true')
   })
+
+  it('marks route holds with rings without prescribing a numbered sequence', () => {
+    const candidate = {
+      holds: ['A4', 'B7', 'G17'],
+      start_holds: ['A4'],
+      middle_holds: ['B7'],
+      end_holds: ['G17'],
+    }
+    const { container } = render(
+      <MoonBoard
+        boardHolds={candidate.holds}
+        candidate={candidate}
+        startHolds={['A4']}
+        endHolds={['G17']}
+        selectionMode="start"
+        onHoldSelect={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /B7, route hold/i })).toHaveClass('is-route')
+    expect(container.querySelector('.route-lines')).not.toBeInTheDocument()
+    expect(container.querySelector('.board-hold span')).not.toBeInTheDocument()
+  })
 })
