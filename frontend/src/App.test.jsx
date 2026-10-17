@@ -59,6 +59,9 @@ describe('App Phase 4 contract', () => {
 
     expect(await screen.findByRole('heading', { name: 'Movement canvas' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '7A' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Quick setup')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Two-hand: Preset/i })).toBeInTheDocument()
+    expect(screen.queryByText(/Allows modest reach outliers/i)).not.toBeInTheDocument()
     expect(getModelCapabilities).toHaveBeenCalled()
   })
 

@@ -21,6 +21,9 @@ https://lczhang42--climb-path-phase3-api.modal.run
   controls or native keyboard-accessible selects.
 - Includes three route presets, reproducible seed/variety controls, and Safer,
   Balanced, and Dynamic movement modes.
+- Separates the presets under a `Quick setup` label, avoids the former duplicate
+  `Balanced` naming, and keeps preset/movement explanations in hover and keyboard
+  focus tooltips so the default setup panel stays compact.
 - Explains Modal warm-up and gives dedicated connecting, long-wait, retry,
   empty, generating, success, and sanitized error states.
 - Compares one conservative retrieval route with up to two model alternatives.

@@ -4,22 +4,22 @@ import { displayHoldLabel } from './boardGeometry'
 
 const ROUTE_PRESETS = [
   {
-    name: 'Balanced',
-    detail: 'Two-hand start · steady center finish',
+    name: 'Two-hand',
+    detail: 'Preset: a 6C+ route with two starting holds and a center finish.',
     grade: '6C+',
     startHolds: ['A4', 'F4'],
     endHolds: ['G17'],
   },
   {
     name: 'Center pull',
-    detail: 'Single start · direct finish',
+    detail: 'Preset: a 7A route from one central start to a center finish.',
     grade: '7A',
     startHolds: ['D5'],
     endHolds: ['G17'],
   },
   {
     name: 'Wide launch',
-    detail: 'Wide start · longer movement',
+    detail: 'Preset: a 7B route with two widely spaced starts and an H18 finish.',
     grade: '7B',
     startHolds: ['B5', 'K5'],
     endHolds: ['H17'],
@@ -113,18 +113,22 @@ function Controls({
         <span className="step-badge">01</span>
       </div>
 
-      <div className="preset-row" aria-label="Route presets">
-        {ROUTE_PRESETS.map((preset) => (
-          <button
-            className="preset-button"
-            type="button"
-            key={preset.name}
-            onClick={() => onApplyPreset(preset)}
-            title={preset.detail}
-          >
-            {preset.name}
-          </button>
-        ))}
+      <div className="preset-field">
+        <span className="control-label">Quick setup</span>
+        <div className="preset-row" aria-label="Quick route setups">
+          {ROUTE_PRESETS.map((preset) => (
+            <button
+              className="preset-button has-tooltip"
+              type="button"
+              key={preset.name}
+              onClick={() => onApplyPreset(preset)}
+              data-tooltip={preset.detail}
+              aria-label={`${preset.name}: ${preset.detail}`}
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <GradeSelector
@@ -136,7 +140,6 @@ function Controls({
 
       <fieldset className="generation-mode-fieldset" disabled={isGenerating}>
         <legend>Movement style</legend>
-        <p>Grade sets the difficulty. Style sets how adventurous the reach can be.</p>
         <div className="generation-mode-grid" role="radiogroup" aria-label="Movement style">
           {(capabilities.generation_modes || FALLBACK_GENERATION_MODES).map((mode) => (
             <button
@@ -145,12 +148,13 @@ function Controls({
               role="radio"
               aria-checked={generationMode === mode.id}
               className={generationMode === mode.id
-                ? `generation-mode-button ${mode.id} is-active`
-                : `generation-mode-button ${mode.id}`}
+                ? `generation-mode-button has-tooltip ${mode.id} is-active`
+                : `generation-mode-button has-tooltip ${mode.id}`}
               onClick={() => onGenerationModeChange(mode.id)}
+              data-tooltip={mode.description}
+              aria-label={`${mode.label}: ${mode.description}`}
             >
               <strong>{mode.label}</strong>
-              <span>{mode.description}</span>
             </button>
           ))}
         </div>
