@@ -14,7 +14,7 @@ computer.
 
 ## UI overview
 
-![Actual Route Forge page running locally in Chrome, showing the movement canvas and route setup controls](docs/route-forge-results.png)
+
 
 _Actual local Route Forge page with a generated 7A route loaded. The Quick
 setup explanation is visible because the heading is being hovered._
