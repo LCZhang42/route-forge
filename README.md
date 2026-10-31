@@ -14,17 +14,25 @@ computer.
 
 ## UI overview
 
-![Route Forge interface with the movement canvas, route setup controls, and generated candidates](docs/route-forge-ui-overview.svg)
+![Actual Route Forge page running locally in Chrome, showing the movement canvas and route setup controls](docs/route-forge-results.png)
 
-The desktop interface keeps the MoonBoard movement canvas on the left and the
-route workflow on the right:
+_Actual local Route Forge page with a generated 7A route loaded. The Quick
+setup explanation is visible because the heading is being hovered._
+
+The status badge in the upper-right confirms that the API and model are ready.
+Below the introduction, the desktop interface keeps the MoonBoard movement
+canvas on the left and the route workflow on the right:
 
 - **Set the problem** contains the grade, movement style, start and finish
-  holds, generation settings, and the **Forge routes** action.
-- **Candidate routes** compares the conservative match with up to two model
-  alternatives and shows the diagnostics for each one.
+  holds, generation settings, and the **Forge routes** action. Hover **Quick
+  setup** or a movement style to read its short explanation without adding
+  permanent text to the page.
 - **Movement canvas** displays the currently selected candidate using green
-  start rings, blue intermediate rings, and an orange finish ring.
+  start rings, blue intermediate rings, and an orange finish ring. The **Edit
+  route** action lets the user drag a ring to another physical hold.
+- **Candidate routes**, farther down the same page, compares the conservative
+  training-data match with up to two model alternatives and shows the holds,
+  longest move, novelty, and movement warnings for each result.
 
 ## Run the tool locally
 
