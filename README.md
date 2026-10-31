@@ -12,6 +12,20 @@ computer.
 > Generated routes are suggestions, not certified safe or climbable problems.
 > Check every route on the physical wall and use human judgment.
 
+## UI overview
+
+![Route Forge interface with the movement canvas, route setup controls, and generated candidates](docs/route-forge-ui-overview.svg)
+
+The desktop interface keeps the MoonBoard movement canvas on the left and the
+route workflow on the right:
+
+- **Set the problem** contains the grade, movement style, start and finish
+  holds, generation settings, and the **Forge routes** action.
+- **Candidate routes** compares the conservative match with up to two model
+  alternatives and shows the diagnostics for each one.
+- **Movement canvas** displays the currently selected candidate using green
+  start rings, blue intermediate rings, and an orange finish ring.
+
 ## Run the tool locally
 
 ### Requirements
@@ -90,6 +104,28 @@ The production build is written to `frontend/dist/`.
 7. Use **Copy shareable setup** to copy the grade, endpoints, seed, and movement
    mode in the page URL. Manual canvas edits are temporary and are not included
    in that URL.
+
+### How to read the results
+
+Selecting a candidate card immediately updates the colored rings on the
+movement canvas. The check mark and highlighted border identify the route that
+is currently displayed.
+
+| Result field | Meaning |
+|---|---|
+| **Conservative match** | A validated nearest route from the training data. It is the lower-risk default, not a guaranteed climbable route. |
+| **Model alternative** | A distinct DistilGPT-2 candidate that passed the format and geometry checks. |
+| **Start / Holds / Finish** | The complete set of handholds. Their colors match the rings on the board. |
+| **Longest beta move** | The largest move in the backend's plausible connection path, measured in board-grid units. Lower is generally more conservative. |
+| **Safer / Balanced / Dynamic beta** | The reach policy used while filtering and ranking the candidate. This is separate from the selected grade. |
+| **Training match / Novel route** | Whether the exact route exists in the training set or is a new combination. Novel does not automatically mean better. |
+| **Movement warning** | A move exceeds the usual range for that grade or another geometry heuristic needs human review. |
+
+The generation status above the cards reports how many candidates were
+returned and how many sampled routes were rejected by the constraints. A route
+without warnings is internally consistent with those checks, but climber size,
+hold orientation, handedness, and real movement still require testing on the
+wall.
 
 ## Training and generation overview
 

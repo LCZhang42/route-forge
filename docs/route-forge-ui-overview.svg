@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title description">
+  <title id="title">Route Forge user interface overview</title>
+  <desc id="description">A dark green route-setting interface with a MoonBoard movement canvas, setup controls, and three generated route candidates.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b120e"/>
+      <stop offset="1" stop-color="#111b15"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b241f"/>
+      <stop offset="1" stop-color="#121a16"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+    <pattern id="grid" width="40" height="29" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="14.5" r="4.2" fill="#161a18" opacity="0.82"/>
+      <circle cx="20" cy="14.5" r="7.5" fill="none" stroke="#8d841d" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="760" rx="28" fill="url(#page)"/>
+  <rect x="28" y="24" width="1144" height="58" rx="18" fill="#101913" stroke="#2b3a30"/>
+  <circle cx="62" cy="53" r="17" fill="#d8ff52"/>
+  <path d="M52 60l9-16 6 10 5-5 7 11z" fill="none" stroke="#101913" stroke-width="2.5" stroke-linejoin="round"/>
+  <text x="92" y="59" fill="#eef3eb" font-family="Arial, sans-serif" font-size="19" font-weight="800" letter-spacing="2">ROUTE FORGE</text>
+  <rect x="1013" y="39" width="130" height="30" rx="15" fill="#142019" stroke="#3b523f"/>
+  <circle cx="1032" cy="54" r="4" fill="#57d279"/>
+  <text x="1045" y="59" fill="#b8c5ba" font-family="Arial, sans-serif" font-size="12">model ready</text>
+
+  <g filter="url(#shadow)">
+    <rect x="28" y="104" width="678" height="624" rx="22" fill="url(#panel)" stroke="#2c3a31"/>
+    <text x="58" y="136" fill="#d8ff52" font-family="Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">MOONBOARD 2016 · 40°</text>
+    <text x="58" y="166" fill="#f0f2ec" font-family="Georgia, serif" font-size="28">Movement canvas</text>
+    <circle cx="528" cy="146" r="4" fill="#57d279"/>
+    <text x="538" y="151" fill="#9baa9d" font-family="Arial, sans-serif" font-size="11">Start</text>
+    <circle cx="588" cy="146" r="4" fill="#5ea7ee"/>
+    <text x="598" y="151" fill="#9baa9d" font-family="Arial, sans-serif" font-size="11">Move</text>
+    <circle cx="650" cy="146" r="4" fill="#ff7d4b"/>
+    <text x="660" y="151" fill="#9baa9d" font-family="Arial, sans-serif" font-size="11">Finish</text>
+
+    <rect x="56" y="184" width="622" height="492" rx="14" fill="#f0e43f" stroke="#090e0b" stroke-width="8"/>
+    <rect x="70" y="199" width="594" height="460" rx="7" fill="url(#grid)"/>
+    <circle cx="366" cy="424" r="190" fill="#ffffff" opacity="0.92"/>
+    <text x="366" y="447" text-anchor="middle" fill="#eadf38" font-family="Arial, sans-serif" font-size="118" font-weight="900" opacity="0.96">MOON</text>
+
+    <g fill="#343a35" opacity="0.82">
+      <path d="M116 626l18-12 17 14-9 15-25-3z"/>
+      <path d="M197 572l14-17 21 8-4 18-25 5z"/>
+      <path d="M268 514l18-10 18 12-8 17-24 1z"/>
+      <path d="M352 459l13-18 21 7 2 17-25 8z"/>
+      <path d="M439 390l16-15 19 11-4 20-22 1z"/>
+      <path d="M531 316l14-13 20 6 3 17-21 8z"/>
+      <path d="M452 249l18-12 19 11-5 17-24 2z"/>
+      <path d="M377 304l17-15 20 9-3 19-25 6z"/>
+      <path d="M291 370l17-14 18 8 1 19-22 7z"/>
+      <path d="M202 435l19-11 17 12-7 17-23 1z"/>
+    </g>
+
+    <g fill="none" stroke-width="6">
+      <circle cx="134" cy="629" r="22" stroke="#24954a"/>
+      <circle cx="217" cy="570" r="22" stroke="#277ed7"/>
+      <circle cx="286" cy="514" r="22" stroke="#277ed7"/>
+      <circle cx="370" cy="459" r="22" stroke="#277ed7"/>
+      <circle cx="457" cy="391" r="22" stroke="#277ed7"/>
+      <circle cx="548" cy="316" r="22" stroke="#277ed7"/>
+      <circle cx="470" cy="248" r="22" stroke="#e45f34"/>
+    </g>
+    <text x="58" y="708" fill="#79887c" font-family="Arial, sans-serif" font-size="11">6 holds in selected route</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="730" y="104" width="442" height="296" rx="22" fill="url(#panel)" stroke="#2c3a31"/>
+    <text x="758" y="136" fill="#d8ff52" font-family="Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">ROUTE BRIEF</text>
+    <text x="758" y="166" fill="#f0f2ec" font-family="Georgia, serif" font-size="27">Set the problem</text>
+    <text x="1128" y="137" fill="#758178" font-family="Arial, sans-serif" font-size="11" font-weight="800">01</text>
+
+    <text x="758" y="198" fill="#99a69b" font-family="Arial, sans-serif" font-size="11" font-weight="700">TARGET GRADE</text>
+    <rect x="758" y="210" width="54" height="32" rx="10" fill="#111713" stroke="#35433a"/>
+    <text x="785" y="231" text-anchor="middle" fill="#cbd4cc" font-family="Arial, sans-serif" font-size="13" font-weight="700">6C+</text>
+    <rect x="820" y="210" width="54" height="32" rx="10" fill="#d8ff52"/>
+    <text x="847" y="231" text-anchor="middle" fill="#0d120e" font-family="Arial, sans-serif" font-size="13" font-weight="800">7A</text>
+    <rect x="882" y="210" width="54" height="32" rx="10" fill="#111713" stroke="#35433a"/>
+    <text x="909" y="231" text-anchor="middle" fill="#cbd4cc" font-family="Arial, sans-serif" font-size="13" font-weight="700">7B</text>
+
+    <text x="758" y="270" fill="#99a69b" font-family="Arial, sans-serif" font-size="11" font-weight="700">MOVEMENT STYLE</text>
+    <rect x="758" y="282" width="112" height="35" rx="11" fill="#111713" stroke="#35433a"/>
+    <text x="814" y="305" text-anchor="middle" fill="#cbd4cc" font-family="Arial, sans-serif" font-size="13">Safer</text>
+    <rect x="878" y="282" width="112" height="35" rx="11" fill="#25341e" stroke="#d8ff52"/>
+    <text x="934" y="305" text-anchor="middle" fill="#d8ff52" font-family="Arial, sans-serif" font-size="13" font-weight="800">Balanced</text>
+    <rect x="998" y="282" width="112" height="35" rx="11" fill="#111713" stroke="#35433a"/>
+    <text x="1054" y="305" text-anchor="middle" fill="#cbd4cc" font-family="Arial, sans-serif" font-size="13">Dynamic</text>
+
+    <rect x="758" y="334" width="128" height="38" rx="10" fill="#111713" stroke="#35433a"/>
+    <text x="772" y="357" fill="#93a198" font-family="Arial, sans-serif" font-size="11">START</text>
+    <text x="864" y="358" text-anchor="end" fill="#eef2ec" font-family="Arial, sans-serif" font-size="14" font-weight="700">D5</text>
+    <rect x="896" y="334" width="128" height="38" rx="10" fill="#111713" stroke="#35433a"/>
+    <text x="910" y="357" fill="#93a198" font-family="Arial, sans-serif" font-size="11">FINISH</text>
+    <text x="1002" y="358" text-anchor="end" fill="#eef2ec" font-family="Arial, sans-serif" font-size="14" font-weight="700">G18</text>
+    <rect x="1034" y="334" width="108" height="38" rx="10" fill="#d8ff52"/>
+    <text x="1088" y="358" text-anchor="middle" fill="#0d120e" font-family="Arial, sans-serif" font-size="13" font-weight="800">Forge routes</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="730" y="420" width="442" height="308" rx="22" fill="url(#panel)" stroke="#2c3a31"/>
+    <text x="758" y="452" fill="#d8ff52" font-family="Arial, sans-serif" font-size="11" font-weight="800" letter-spacing="2">COMPARE</text>
+    <text x="758" y="483" fill="#f0f2ec" font-family="Georgia, serif" font-size="27">Candidate routes</text>
+    <text x="1128" y="453" fill="#758178" font-family="Arial, sans-serif" font-size="11" font-weight="800">02</text>
+
+    <rect x="758" y="500" width="386" height="64" rx="13" fill="#24331e" stroke="#8fab3f"/>
+    <text x="775" y="526" fill="#d8ff52" font-family="Arial, sans-serif" font-size="14" font-weight="800">01</text>
+    <text x="812" y="523" fill="#eef2ec" font-family="Arial, sans-serif" font-size="14" font-weight="800">Conservative match</text>
+    <text x="812" y="542" fill="#8f9e92" font-family="Arial, sans-serif" font-size="11">7A · 6 holds · Balanced beta · Training match</text>
+    <circle cx="1124" cy="523" r="8" fill="#d8ff52"/>
+    <path d="M1120 523l3 3 6-7" fill="none" stroke="#172013" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="758" y="574" width="386" height="64" rx="13" fill="#101713" stroke="#2f3e34"/>
+    <text x="775" y="600" fill="#d8ff52" font-family="Arial, sans-serif" font-size="14" font-weight="800">02</text>
+    <text x="812" y="597" fill="#eef2ec" font-family="Arial, sans-serif" font-size="14" font-weight="800">Model alternative</text>
+    <text x="812" y="616" fill="#8f9e92" font-family="Arial, sans-serif" font-size="11">7A · 6 holds · Longest move 4.5 · Novel route</text>
+
+    <rect x="758" y="648" width="386" height="64" rx="13" fill="#101713" stroke="#2f3e34"/>
+    <text x="775" y="674" fill="#d8ff52" font-family="Arial, sans-serif" font-size="14" font-weight="800">03</text>
+    <text x="812" y="671" fill="#eef2ec" font-family="Arial, sans-serif" font-size="14" font-weight="800">Model alternative</text>
+    <text x="812" y="690" fill="#8f9e92" font-family="Arial, sans-serif" font-size="11">7A · 7 holds · Longest move 4.8 · Novel route</text>
+  </g>
+</svg>
