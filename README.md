@@ -14,10 +14,10 @@ computer.
 
 ## UI overview
 
+![Full Route Forge results page showing the movement canvas, route setup controls, and three candidate routes](docs/route-forge-results.png)
 
-
-_Actual local Route Forge page with a generated 7A route loaded. The Quick
-setup explanation is visible because the heading is being hovered._
+_Actual full-page Route Forge capture with a generated 7A Balanced problem and
+candidate 02 selected. Browser tabs and toolbars are not included._
 
 The status badge in the upper-right confirms that the API and model are ready.
 Below the introduction, the desktop interface keeps the MoonBoard movement
@@ -29,10 +29,15 @@ canvas on the left and the route workflow on the right:
   permanent text to the page.
 - **Movement canvas** displays the currently selected candidate using green
   start rings, blue intermediate rings, and an orange finish ring. The **Edit
-  route** action lets the user drag a ring to another physical hold.
-- **Candidate routes**, farther down the same page, compares the conservative
-  training-data match with up to two model alternatives and shows the holds,
-  longest move, novelty, and movement warnings for each result.
+  route** action lets the user drag a ring to another physical hold. In the
+  screenshot, its rings match selected candidate **02**.
+- **Candidate routes**, beneath the setup controls, compares the conservative
+  training-data match with up to two model alternatives. Each card lists its
+  start, middle, and finish holds plus the longest move, movement mode, novelty,
+  and any warnings. The lime border and check mark identify the route currently
+  displayed on the board.
+- **Copy shareable setup** preserves the grade, endpoints, seed, and movement
+  mode in the URL so another user can reopen the same generation setup.
 
 ## Run the tool locally
 
